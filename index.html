@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>我的新網站</title>
+    <meta name="description" content="一個由零開始的輕量級網站樣板。" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css" />
+    <meta property="og:title" content="我的新網站" />
+    <meta property="og:description" content="一個由零開始的輕量級網站樣板。" />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <header class="site-header container">
+      <a class="brand" href="#home" aria-label="首頁">🌱 MySite</a>
+      <nav class="nav" aria-label="主選單">
+        <a href="#features">特色</a>
+        <a href="#about">關於</a>
+        <a href="#contact">聯絡</a>
+      </nav>
+      <button id="themeToggle" class="btn outline" aria-pressed="false" aria-label="切換深淺色">主題</button>
+    </header>
+
+    <main id="home">
+      <section class="hero container">
+        <h1>從零開始，也能做出漂亮網站</h1>
+        <p>這個樣板幫你省去架構與設計的麻煩，專注在內容與功能。</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#features">看看能做什麼</a>
+          <a class="btn" href="#contact">我要開始</a>
+        </div>
+        <img class="hero-illustration" src="assets/hero.svg" alt="網站示意插圖" />
+      </section>
+
+      <section id="features" class="section container">
+        <h2>內建功能特色</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>行動優先</h3>
+            <p>自適應版面，手機到桌機都好看。</p>
+          </article>
+          <article class="card">
+            <h3>暗色主題</h3>
+            <p>一鍵切換深/淺色，紀錄於瀏覽器。</p>
+          </article>
+          <article class="card">
+            <h3>可擴充</h3>
+            <p>清楚的檔案結構，容易加入新頁面或元件。</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="about" class="section container">
+        <h2>關於這個樣板</h2>
+        <p>這是最小可用（MVP）的靜態網站專案，沒有繁瑣框架依賴，適合新手練習，也方便日後升級到 React / Next.js 或後端伺服器。</p>
+      </section>
+
+      <section id="contact" class="section container">
+        <h2>聯絡我</h2>
+        <form id="contactForm" class="card" autocomplete="on" novalidate>
+          <label>名字
+            <input type="text" name="name" placeholder="您的大名" required>
+          </label>
+          <label>Email
+            <input type="email" name="email" placeholder="you@example.com" required>
+          </label>
+          <label>訊息
+            <textarea name="message" rows="4" placeholder="想說些什麼？" required></textarea>
+          </label>
+          <button class="btn primary" type="submit">送出</button>
+          <p id="formMsg" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+    </main>
+
+    <footer class="site-footer container">
+      <small>&copy; <span id="year"></span> MySite. 由你打造 ✨</small>
+    </footer>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
