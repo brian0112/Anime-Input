@@ -14,7 +14,6 @@
     <meta property="og:description" content="登記動畫、輸入觀看紀錄、總覽與匯出。"/>
     <meta property="og:type" content="website" />
     <style>
-      /* ────────────────────── 這裡是本頁新增的輕量樣式（沿用原設計語彙） ────────────────────── */
       .tabs { display:flex; gap:.5rem; flex-wrap:wrap; }
       .tabs a { text-decoration:none; }
       .hidden{ display:none !important }
@@ -113,7 +112,7 @@
                 <input id="range-start" type="number" min="1" step="1" placeholder="起始">
                 <span>—</span>
                 <input id="range-end" type="number" min="1" step="1" placeholder="結束">
-                <button id="range-submit" class="btn primary">加入區間</button>
+                <button id="range-submit" class="btn primary">加入</button>
                 <span id="range-msg" class="muted" aria-live="polite"></span>
               </div>
 
@@ -201,25 +200,17 @@
       <small>&copy; <span id="year"></span> 動畫進度 · 由你打造 ✨</small>
     </footer>
 
-    <!-- Starter 腳本：主題切換/年份 -->
     <script src="script.js" defer></script>
 
-    <!-- 本頁專用邏輯（不碰 styles.css/script.js 以利你維護） -->
     <script type="module">
-      // ────────────────────────────── 資料模型與儲存 ──────────────────────────────
       const DB_KEY = 'animeDB_v1';
-      /** @type {{items: Array<{id:string,name:string,episodes:number,image?:string,createdAt:number,updatedAt:number,watched:number[]}>}} */
-      function loadDB(){
-        try { return JSON.parse(localStorage.getItem(DB_KEY)) ?? { items: [] }; }
-        catch { return { items: [] }; }
-      }
+      function loadDB(){ try { return JSON.parse(localStorage.getItem(DB_KEY)) ?? { items: [] }; } catch { return { items: [] }; } }
       function saveDB(db){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
       function uid(){ return Math.random().toString(36).slice(2,10); }
+      const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
-      // 年份
       document.getElementById('year').textContent = new Date().getFullYear();
 
-      // 路由
       const sections = ['record','manage','dashboard'];
       function show(hash){
         const id = hash?.replace('#','') || 'record';
@@ -258,33 +249,29 @@
       const searchResults   = document.getElementById('search-results');
       const exportBtn       = document.getElementById('export-csv');
 
-      // 狀態：目前選取的動畫 id
       let currentAnimeId = null;
 
-      // 共用
-      function fileToDataURL(file){
-        return new Promise((res,rej)=>{
-          const r = new FileReader();
-          r.onload = ()=> res(r.result);
-          r.onerror = rej;
-          r.readAsDataURL(file);
-        });
+      function isComplete(a){ return (a.watched?.length||0) >= a.episodes && a.episodes>0; }
+      function badgeHTML(a){
+        return `<span class="badge ${isComplete(a)?'complete':''}">觀看 ${a.watched?.length||0} / ${a.episodes}</span>`;
       }
-      const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
+      function nextUnwatched(a){
+        const watched = new Set(a.watched||[]);
+        for(let i=1;i<=a.episodes;i++){ if(!watched.has(i)) return i; }
+        return null;
+      }
 
-      // ────────────────────────────── 畫面刷新 ──────────────────────────────
       function refreshAll(){
         const db = loadDB();
         renderAnimeSelect(db);
         renderEpisodesUI(db);
         renderManageList(db);
         renderLatestGrid(db);
-        renderSearchResults(db, searchInput.value.trim());
+        renderSearchResults(db, searchInput.value?.trim() || '');
       }
 
       // A. 自訂動畫下拉
       function renderAnimeSelect(db){
-        // 排序：最新登記（createdAt desc）
         const items = db.items.slice().sort((a,b)=> b.createdAt - a.createdAt);
         animeSelectList.innerHTML = '';
 
@@ -296,12 +283,12 @@
           return;
         }
 
-        // 如果目前選取不存在，預設選第一個（最新）
+        // 若目前未選中，預設最新那筆
         if(!items.some(x=> x.id === currentAnimeId)){
           currentAnimeId = items[0].id;
         }
 
-        // 建立清單
+        // 清單
         for(const a of items){
           const row = document.createElement('div');
           row.className = 'select-item';
@@ -312,13 +299,13 @@
               <img alt="" src="${a.image || 'assets/hero.svg'}">
               <div class="ellipsis-1">${a.name}</div>
             </div>
-            <span class="badge ${isComplete(a)?'complete':''}">觀看 ${a.watched?.length||0} / ${a.episodes}</span>
+            ${badgeHTML(a)}
           `;
-          row.addEventListener('click', ()=> {
+          row.addEventListener('click', ()=>{
             currentAnimeId = a.id;
             closeAnimeList();
             updateAnimeButton(a);
-            renderEpisodesUI(loadDB());
+            renderEpisodesUI(loadDB()); // 立即刷新 chips/提示
           });
           animeSelectList.appendChild(row);
         }
@@ -331,48 +318,34 @@
         animeSelectBtn.querySelector('img').src = a.image || 'assets/hero.svg';
         animeSelectBtn.querySelector('.name').textContent = a.name;
         const b = animeSelectBtn.querySelector('.badge');
-        b.textContent = `觀看 ${a.watched?.length||0} / ${a.episodes}`;
+        b.innerHTML = `觀看 ${a.watched?.length||0} / ${a.episodes}`;
         b.classList.toggle('complete', isComplete(a));
         animeSelectBtn.setAttribute('aria-expanded','false');
       }
       function openAnimeList(){
         animeSelectList.classList.remove('hidden');
         animeSelectBtn.setAttribute('aria-expanded','true');
-        // 焦點到清單，支援鍵盤
         animeSelectList.focus();
       }
       function closeAnimeList(){
         animeSelectList.classList.add('hidden');
         animeSelectBtn.setAttribute('aria-expanded','false');
       }
-      animeSelectBtn.addEventListener('click', (e)=>{
+      animeSelectBtn.addEventListener('click', ()=>{
         const open = animeSelectBtn.getAttribute('aria-expanded') === 'true';
         open ? closeAnimeList() : openAnimeList();
       });
       document.addEventListener('click', (e)=>{
         if(!e.target.closest('#animeSelect')) closeAnimeList();
       });
-      animeSelectList.addEventListener('keydown', (e)=>{
-        const rows = Array.from(animeSelectList.querySelectorAll('.select-item'));
-        const idx = rows.findIndex(r=> r.classList.contains('focus'));
-        const focusAt = (i)=>{
-          rows.forEach(r=> r.classList.remove('focus'));
-          rows[i]?.classList.add('focus');
-          rows[i]?.scrollIntoView({block:'nearest'});
-        };
-        if(e.key==='ArrowDown'){ e.preventDefault(); focusAt(idx<rows.length-1? idx+1 : 0); }
-        if(e.key==='ArrowUp'){ e.preventDefault(); focusAt(idx>0? idx-1 : rows.length-1); }
-        if(e.key==='Enter' && idx>=0){
-          rows[idx].click();
-        }
-      });
 
       // B. 集數區域（區間 + 手動 chips）
       function renderEpisodesUI(db){
-        rangeMsg.textContent = '';
-        manualMsg.textContent = '';
-        recordMsg.textContent = '';
         const a = db.items.find(x=> x.id === currentAnimeId);
+        rangeMsg.textContent = '';
+        document.getElementById('manual-msg').textContent = '';
+        recordMsg.textContent = '';
+
         if(!a){
           episodesHint.textContent = '已看 0 / 總 0';
           rangeStart.value = ''; rangeEnd.value = '';
@@ -381,14 +354,14 @@
         }
         episodesHint.textContent = `已看 ${a.watched?.length||0} / 總 ${a.episodes}`;
 
-        // 預設區間：下一未觀看集
-        const next = nextUnwatched(a);
+        // 預填：下一未觀看
+        const next = nextUnwatched(a) ?? 1;
         rangeStart.min = '1'; rangeStart.max = String(a.episodes);
         rangeEnd.min   = '1'; rangeEnd.max   = String(a.episodes);
-        rangeStart.value = next ? String(next) : '1';
-        rangeEnd.value   = next ? String(next) : '1';
+        rangeStart.value = String(next);
+        rangeEnd.value   = String(next);
 
-        // 手動 chips（只顯示未觀看）
+        // 產生 chips（只顯示未觀看）
         const watched = new Set(a.watched||[]);
         chipsContainer.innerHTML = '';
         const frag = document.createDocumentFragment();
@@ -401,14 +374,12 @@
           chip.addEventListener('click', ()=> chip.classList.toggle('selected'));
           frag.appendChild(chip);
         }
+        chipsContainer.appendChild(frag);
         if(!frag.childNodes.length){
           chipsContainer.innerHTML = '<span class="muted">本作品已全部看完 🎉</span>';
-        }else{
-          chipsContainer.appendChild(frag);
         }
       }
 
-      // 區間加入：若含已看過 → 提醒 + 不儲存
       rangeSubmit.addEventListener('click', ()=>{
         const db = loadDB();
         const a = db.items.find(x=> x.id === currentAnimeId);
@@ -423,20 +394,14 @@
         if(s > e){ [s,e] = [e,s]; }
 
         const watched = new Set(a.watched||[]);
-        const all = [];
-        const conflicts = [];
-        for(let i=s;i<=e;i++){
-          if(watched.has(i)) conflicts.push(i);
-          else all.push(i);
-        }
+        const all = [], conflicts = [];
+        for(let i=s;i<=e;i++){ (watched.has(i) ? conflicts : all).push(i); }
         if(conflicts.length){
           rangeMsg.textContent = `已有紀錄：${conflicts.map(n=>'Ep'+n).join(', ')}。請調整區間後再試。`;
-          return; // 不儲存
-        }
-        if(all.length===0){
-          rangeMsg.textContent = '此區間沒有可新增的集數。';
           return;
         }
+        if(all.length===0){ rangeMsg.textContent = '此區間沒有可新增的集數。'; return; }
+
         a.watched = Array.from(new Set([...(a.watched||[]), ...all])).sort((x,y)=>x-y);
         a.updatedAt = Date.now();
         saveDB(db);
@@ -446,16 +411,13 @@
         renderAnimeSelect(db);
       });
 
-      // 手動勾選加入：chips 僅顯示未看過，理論上無衝突
       manualSubmit.addEventListener('click', ()=>{
         const db = loadDB();
         const a = db.items.find(x=> x.id === currentAnimeId);
+        const manualMsg = document.getElementById('manual-msg');
         if(!a){ manualMsg.textContent = '請先選擇動畫。'; return; }
         const selected = Array.from(chipsContainer.querySelectorAll('.chip.selected')).map(x=> Number(x.dataset.ep));
-        if(selected.length===0){
-          manualMsg.textContent = '請先選擇至少一集。';
-          return;
-        }
+        if(selected.length===0){ manualMsg.textContent = '請先選擇至少一集。'; return; }
         a.watched = Array.from(new Set([...(a.watched||[]), ...selected])).sort((x,y)=>x-y);
         a.updatedAt = Date.now();
         saveDB(db);
@@ -465,7 +427,7 @@
         renderAnimeSelect(db);
       });
 
-      // C. 登記頁清單（兩欄卡片、左圖右文、右上垃圾桶）
+      // C. 登記頁
       function renderManageList(db){
         manageList.innerHTML = '';
         if(db.items.length === 0){
@@ -481,7 +443,7 @@
             <div class="stack">
               <div class="title-row">
                 <strong class="ellipsis-1" title="${a.name}">${a.name}</strong>
-                <span class="badge ${isComplete(a)?'complete':''}">觀看 ${a.watched?.length||0} / ${a.episodes}</span>
+                ${badgeHTML(a)}
               </div>
               <small class="muted">共 ${a.episodes} 集 · 已看 ${a.watched?.length||0} 集</small>
             </div>
@@ -505,7 +467,7 @@
         }
       }
 
-      // D. 新增動畫對話框：取消能正常關閉；文案已改
+      // D. 新增動畫（修正：新增後自動選中該作品並全域刷新）
       openCreateBtn.addEventListener('click', ()=> {
         createForm.reset();
         createMsg.textContent = '';
@@ -529,27 +491,30 @@
         const file = createImage.files?.[0];
         if(file){ imageData = await fileToDataURL(file); }
 
+        const id = uid();
         db.items.push({
-          id: uid(),
-          name,
-          episodes,
+          id, name, episodes,
           image: imageData || undefined,
           createdAt: Date.now(),
           updatedAt: Date.now(),
           watched: []
         });
         saveDB(db);
-        createMsg.textContent = '已新增！';
+        currentAnimeId = id;                // ⬅ 新增：自動選中這筆
         createDialog.close();
-        refreshAll();
+        refreshAll();                       // ⬅ 確保三頁都更新
       });
 
-      // E. 總覽：最新 9 部（移除下拉，只保留圖 + 名稱 + 觀看 X/Y）
-      function badgeHTML(a){
-        return `<span class="badge ${isComplete(a)?'complete':''}">觀看 ${a.watched?.length||0} / ${a.episodes}</span>`;
+      function fileToDataURL(file){
+        return new Promise((res,rej)=>{
+          const r = new FileReader();
+          r.onload = ()=> res(r.result);
+          r.onerror = rej;
+          r.readAsDataURL(file);
+        });
       }
-      function isComplete(a){ return (a.watched?.length||0) >= a.episodes && a.episodes>0; }
 
+      // E. 總覽
       function renderLatestGrid(db){
         latestGrid.innerHTML = '';
         if(db.items.length === 0){
@@ -570,15 +535,14 @@
           latestGrid.appendChild(card);
         }
       }
-
-      // 搜尋結果卡（也不顯示下拉）
       function renderSearchResults(db, keyword){
         searchResults.innerHTML = '';
         const list = db.items.slice();
-        const results = !keyword ? [] : list.filter(a =>
-          a.name.toLowerCase().includes(keyword.toLowerCase())
+        const kw = (keyword||'').trim();
+        const results = !kw ? [] : list.filter(a =>
+          a.name.toLowerCase().includes(kw.toLowerCase())
         );
-        if(!keyword){ return; }
+        if(!kw){ return; }
         if(results.length === 0){
           searchResults.innerHTML = '<div class="muted">沒有符合的作品。</div>';
           return;
@@ -596,53 +560,11 @@
           searchResults.appendChild(card);
         }
       }
-      searchInput.addEventListener('input', ()=> renderSearchResults(loadDB(), searchInput.value.trim()));
+      searchInput.addEventListener('input', ()=> renderSearchResults(loadDB(), searchInput.value));
       searchClear.addEventListener('click', ()=>{
         searchInput.value = '';
         renderSearchResults(loadDB(), '');
       });
-
-      // 匯出 CSV（保留，格式之後你再指定）
-      exportBtn.addEventListener('click', ()=>{
-        const db = loadDB();
-        const rows = [
-          ['name','episodes_total','watched_count','watched_list','created_at','updated_at']
-        ];
-        for(const a of db.items){
-          rows.push([
-            a.name,
-            String(a.episodes),
-            String(a.watched?.length||0),
-            (a.watched||[]).sort((x,y)=>x-y).map(n=>'Ep'+n).join(' '),
-            new Date(a.createdAt).toISOString(),
-            new Date(a.updatedAt).toISOString()
-          ]);
-        }
-        const csv = rows.map(r => r.map(v => csvEscape(v)).join(',')).join('\r\n');
-        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'anime_watch_export.csv';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      });
-      function csvEscape(v){
-        const s = String(v ?? '');
-        if(/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
-        return s;
-      }
-
-      // 工具：下一未觀看集
-      function nextUnwatched(a){
-        const watched = new Set(a.watched||[]);
-        for(let i=1;i<=a.episodes;i++){
-          if(!watched.has(i)) return i;
-        }
-        return null;
-      }
 
       // 首次載入
       refreshAll();
