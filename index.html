@@ -3,84 +3,492 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>我的新網站</title>
-    <meta name="description" content="一個由零開始的輕量級網站樣板。" />
+    <title>動畫觀賞紀錄</title>
+    <meta name="description" content="登記動畫、勾選觀看集數、可視化總覽與匯出。" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
-    <meta property="og:title" content="我的新網站" />
-    <meta property="og:description" content="一個由零開始的輕量級網站樣板。" />
+    <meta property="og:title" content="動畫觀賞紀錄" />
+    <meta property="og:description" content="登記動畫、勾選觀看集數、可視化總覽與匯出。" />
     <meta property="og:type" content="website" />
+    <style>
+      /* 少量增補樣式，沿用原本的設計語彙 */
+      .tabs { display:flex; gap:.5rem; flex-wrap:wrap; }
+      .tabs a { text-decoration:none; }
+      .hidden{ display:none !important }
+      .stack{ display:grid; gap:1rem }
+      .row{ display:flex; gap:.75rem; align-items:center; flex-wrap:wrap }
+      .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:1rem }
+      .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:1rem }
+      .pill{ border:1px solid var(--border); padding:.25rem .6rem; border-radius:999px; font-size:.9rem; color:var(--muted)}
+      .muted{ color:var(--muted) }
+      .thumb{ width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:.75rem; border:1px solid var(--border); background:#0002 }
+      .badge{ font-size:.8rem; padding:.2rem .5rem; border-radius:.5rem; border:1px solid var(--border); }
+      dialog{ border:1px solid var(--border); background:var(--panel); color:var(--text); border-radius:1rem; padding:1rem; max-width:560px }
+      dialog::backdrop{ background: rgba(0,0,0,.4) }
+      .checkboxes{ display:grid; grid-template-columns:repeat(6,1fr); gap:.5rem }
+      @media (max-width: 860px){
+        .two-col{ grid-template-columns:1fr }
+        .grid-3{ grid-template-columns:1fr }
+        .checkboxes{ grid-template-columns:repeat(4,1fr) }
+      }
+      select[multiple]{ min-height:6rem }
+      .search-row{ display:flex; gap:.5rem; align-items:center; margin-top:.5rem }
+    </style>
   </head>
   <body>
     <header class="site-header container">
-      <a class="brand" href="#home" aria-label="首頁">🌱 MySite</a>
-      <nav class="nav" aria-label="主選單">
-        <a href="#features">特色</a>
-        <a href="#about">關於</a>
-        <a href="#contact">聯絡</a>
+      <a class="brand" href="#record" aria-label="首頁">🎞️ 觀賞紀錄</a>
+      <nav class="nav tabs" aria-label="主選單">
+        <a href="#record" class="pill">紀錄</a>
+        <a href="#manage" class="pill">登記</a>
+        <a href="#dashboard" class="pill">總覽</a>
       </nav>
       <button id="themeToggle" class="btn outline" aria-pressed="false" aria-label="切換深淺色">主題</button>
     </header>
 
-    <main id="home">
-      <section class="hero container">
-        <h1>從零開始，也能做出漂亮網站</h1>
-        <p>這個樣板幫你省去架構與設計的麻煩，專注在內容與功能。</p>
-        <div class="hero-actions">
-          <a class="btn primary" href="#features">輸出試算</a>
-          <a class="btn" href="#contact">新增觀看</a>
-        </div>
-        <img class="hero-illustration" src="assets/hero.svg" alt="網站示意插圖" />
-      </section>
+    <main id="app">
+      <!-- ───────────────────────────────── 主頁：輸入觀看紀錄 ───────────────────────────────── -->
+      <section id="record" class="container section">
+        <h2>➊ 輸入觀看紀錄</h2>
+        <div class="card stack">
+          <div class="two-col">
+            <label>選擇動畫
+              <select id="record-anime" required></select>
+            </label>
 
-      <section id="features" class="section container">
-        <h2>內建功能特色</h2>
-        <div class="grid">
-          <article class="card">
-            <h3>行動優先</h3>
-            <p>自適應版面，手機到桌機都好看。</p>
-          </article>
-          <article class="card">
-            <h3>暗色主題</h3>
-            <p>一鍵切換深/淺色，紀錄於瀏覽器。</p>
-          </article>
-          <article class="card">
-            <h3>可擴充</h3>
-            <p>清楚的檔案結構，容易加入新頁面或元件。</p>
-          </article>
+            <div>
+              <div class="row" style="justify-content:space-between">
+                <label>選擇集數（自動隱藏已看過）</label>
+                <span class="muted" id="episodes-hint"></span>
+              </div>
+              <div id="episode-checkboxes" class="checkboxes"></div>
+            </div>
+          </div>
+          <div class="row">
+            <button id="record-submit" class="btn primary">加入觀看紀錄</button>
+            <span id="record-msg" class="muted" aria-live="polite"></span>
+          </div>
         </div>
       </section>
 
-      <section id="about" class="section container">
-        <h2>關於這個樣板</h2>
-        <p>這是最小可用（MVP）的靜態網站專案，沒有繁瑣框架依賴，適合新手練習，也方便日後升級到 React / Next.js 或後端伺服器。</p>
+      <!-- ───────────────────────────────── 第二頁：登記動畫 ───────────────────────────────── -->
+      <section id="manage" class="container section">
+        <h2>➋ 登記 / 管理動畫</h2>
+        <div class="row">
+          <button id="open-create" class="btn primary">新增動畫</button>
+          <span class="muted">新增後會出現在「紀錄」的下拉選單與「總覽」。</span>
+        </div>
+
+        <div class="section card stack">
+          <h3>已登記動畫</h3>
+          <div id="manage-list" class="grid"></div>
+        </div>
+
+        <!-- 建立動畫對話框 -->
+        <dialog id="create-dialog">
+          <form method="dialog" class="stack" id="create-form">
+            <h3>新增動畫</h3>
+            <label>動畫圖片（選填）
+              <input id="create-image" type="file" accept="image/*">
+            </label>
+            <label>動畫名稱
+              <input id="create-name" type="text" placeholder="例如：星際漂流記" required>
+            </label>
+            <label>動畫集數（只允許 0-9 數字）
+              <input id="create-episodes" inputmode="numeric" pattern="[0-9]*" placeholder="例如：12" required>
+            </label>
+            <div class="row">
+              <button class="btn primary" id="create-submit">儲存</button>
+              <button class="btn" value="cancel">取消</button>
+              <span id="create-msg" class="muted" aria-live="polite"></span>
+            </div>
+          </form>
+        </dialog>
       </section>
 
-      <section id="contact" class="section container">
-        <h2>聯絡我</h2>
-        <form id="contactForm" class="card" autocomplete="on" novalidate>
-          <label>名字
-            <input type="text" name="name" placeholder="您的大名" required>
-          </label>
-          <label>Email
-            <input type="email" name="email" placeholder="you@example.com" required>
-          </label>
-          <label>訊息
-            <textarea name="message" rows="4" placeholder="想說些什麼？" required></textarea>
-          </label>
-          <button class="btn primary" type="submit">送出</button>
-          <p id="formMsg" role="status" aria-live="polite"></p>
-        </form>
+      <!-- ───────────────────────────────── 第三頁：總覽 / 搜尋 / 匯出 ───────────────────────────────── -->
+      <section id="dashboard" class="container section">
+        <h2>➌ 總覽 / 搜尋 / 匯出</h2>
+
+        <div class="row">
+          <button id="export-csv" class="btn outline">匯出試算表（CSV）</button>
+          <span class="muted">目前先輸出 CSV；格式之後可再調整。</span>
+        </div>
+
+        <div class="section">
+          <h3>最新登記的 9 部作品</h3>
+          <div id="latest-grid" class="grid-3"></div>
+        </div>
+
+        <div class="section card">
+          <h3>搜尋其他作品</h3>
+          <div class="search-row">
+            <input id="search-input" type="search" placeholder="輸入關鍵字..." />
+            <button id="search-clear" class="btn">清除</button>
+          </div>
+          <div id="search-results" class="grid-3" style="margin-top:1rem"></div>
+        </div>
       </section>
     </main>
 
     <footer class="site-footer container">
-      <small>&copy; <span id="year"></span> MySite. 由你打造 ✨</small>
+      <small>&copy; <span id="year"></span> 你的動畫觀賞記錄器</small>
     </footer>
 
+    <!-- 原本 starter 的腳本（主題切換/年份） -->
     <script src="script.js" defer></script>
+
+    <!-- 本頁專用邏輯 -->
+    <script type="module">
+      // ────────────────────────────── 資料模型與儲存 ──────────────────────────────
+      const DB_KEY = 'animeDB_v1';
+      /** @type {{items: Array<{id:string,name:string,episodes:number,image?:string,createdAt:number,updatedAt:number,watched:number[]}>}} */
+      function loadDB(){
+        try { return JSON.parse(localStorage.getItem(DB_KEY)) ?? { items: [] }; }
+        catch { return { items: [] }; }
+      }
+      function saveDB(db){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+
+      function uid(){ return Math.random().toString(36).slice(2,10); }
+
+      // ────────────────────────────── 頁面路由（hash） ──────────────────────────────
+      const sections = ['record','manage','dashboard'];
+      function show(hash){
+        const id = hash?.replace('#','') || 'record';
+        sections.forEach(s => document.getElementById(s).classList.toggle('hidden', s !== id));
+        history.replaceState(null,'', '#'+id);
+      }
+      window.addEventListener('hashchange', ()=> show(location.hash));
+      show(location.hash);
+
+      // 年份
+      document.getElementById('year').textContent = new Date().getFullYear();
+
+      // ────────────────────────────── 元件參照 ──────────────────────────────
+      const recordAnime = document.getElementById('record-anime');
+      const episodeBoxes = document.getElementById('episode-checkboxes');
+      const episodesHint = document.getElementById('episodes-hint');
+      const recordSubmit = document.getElementById('record-submit');
+      const recordMsg = document.getElementById('record-msg');
+
+      const openCreateBtn = document.getElementById('open-create');
+      const createDialog = document.getElementById('create-dialog');
+      const createForm = document.getElementById('create-form');
+      const createImage = document.getElementById('create-image');
+      const createName = document.getElementById('create-name');
+      const createEps  = document.getElementById('create-episodes');
+      const createMsg  = document.getElementById('create-msg');
+      const manageList = document.getElementById('manage-list');
+
+      const latestGrid = document.getElementById('latest-grid');
+      const searchInput = document.getElementById('search-input');
+      const searchClear = document.getElementById('search-clear');
+      const searchResults = document.getElementById('search-results');
+      const exportBtn = document.getElementById('export-csv');
+
+      // ────────────────────────────── UI 初始化/刷新 ──────────────────────────────
+      function refreshAll(){
+        const db = loadDB();
+        renderRecordAnimeOptions(db);
+        renderEpisodeBoxes(db);
+        renderManageList(db);
+        renderLatestGrid(db);
+        renderSearchResults(db, searchInput.value.trim());
+      }
+
+      function renderRecordAnimeOptions(db){
+        recordAnime.innerHTML = '';
+        if(db.items.length === 0){
+          const opt = new Option('（尚無作品，請先到「登記」新增）','');
+          recordAnime.add(opt);
+          return;
+        }
+        db.items
+          .slice()
+          .sort((a,b)=> a.name.localeCompare(b.name,'zh-Hant'))
+          .forEach(item => recordAnime.add(new Option(item.name, item.id)));
+      }
+
+      function getSelectedAnime(db){
+        const id = recordAnime.value;
+        return db.items.find(x => x.id === id) || null;
+      }
+
+      function renderEpisodeBoxes(db){
+        const a = getSelectedAnime(db);
+        episodeBoxes.innerHTML = '';
+        if(!a){
+          episodesHint.textContent = '';
+          return;
+        }
+        const watched = new Set(a.watched || []);
+        const available = [];
+        for(let i=1;i<=a.episodes;i++){
+          if(!watched.has(i)) available.push(i);
+        }
+        episodesHint.textContent = `可勾選：${available.length} 集（共 ${a.episodes} 集）`;
+        if(available.length === 0){
+          episodeBoxes.innerHTML = '<span class="muted">本作品已全部看完 🎉</span>';
+          return;
+        }
+        const frag = document.createDocumentFragment();
+        for(const ep of available){
+          const id = 'ep_' + ep;
+          const label = document.createElement('label');
+          label.className = 'row';
+          label.innerHTML = `
+            <input type="checkbox" id="${id}" value="${ep}">
+            <span>Ep${ep}</span>
+          `;
+          frag.appendChild(label);
+        }
+        episodeBoxes.appendChild(frag);
+      }
+
+      function renderManageList(db){
+        manageList.innerHTML = '';
+        if(db.items.length === 0){
+          manageList.innerHTML = '<div class="muted">尚未登記任何動畫。</div>';
+          return;
+        }
+        const grid = document.createElement('div');
+        grid.className = 'grid-3';
+        db.items
+          .slice()
+          .sort((a,b)=> a.name.localeCompare(b.name,'zh-Hant'))
+          .forEach(a=>{
+            const card = document.createElement('article');
+            card.className = 'card stack';
+            const img = document.createElement('img');
+            img.className = 'thumb';
+            img.alt = a.name;
+            img.src = a.image || 'assets/hero.svg';
+            const title = document.createElement('div');
+            title.className = 'row';
+            title.style.justifyContent = 'space-between';
+            title.innerHTML = `<strong>${a.name}</strong><span class="badge">共 ${a.episodes} 集</span>`;
+            const meta = document.createElement('small');
+            meta.className = 'muted';
+            meta.textContent = '已看 ' + (a.watched?.length||0) + ' 集';
+
+            const del = document.createElement('button');
+            del.className = 'btn';
+            del.textContent = '刪除';
+            del.addEventListener('click', ()=>{
+              if(confirm(`確定要刪除「${a.name}」嗎？此動作無法復原。`)){
+                const idx = db.items.findIndex(x=>x.id===a.id);
+                if(idx>-1){ db.items.splice(idx,1); saveDB(db); refreshAll(); }
+              }
+            });
+
+            card.append(img,title,meta,del);
+            grid.appendChild(card);
+          });
+        manageList.appendChild(grid);
+      }
+
+      function renderLatestGrid(db){
+        latestGrid.innerHTML = '';
+        if(db.items.length === 0){
+          latestGrid.innerHTML = '<div class="muted">尚未登記任何動畫。</div>';
+          return;
+        }
+        const top9 = db.items
+          .slice()
+          .sort((a,b)=> b.createdAt - a.createdAt)
+          .slice(0,9);
+        for(const a of top9){
+          const card = document.createElement('article');
+          card.className = 'card stack';
+          card.innerHTML = `
+            <img class="thumb" alt="${a.name}" src="${a.image || 'assets/hero.svg'}">
+            <div class="row" style="justify-content:space-between">
+              <strong>${a.name}</strong>
+              <span class="badge">觀看 ${a.watched?.length||0} / ${a.episodes}</span>
+            </div>
+          `;
+          const select = document.createElement('select');
+          select.multiple = true;
+          select.title = '已觀看集數';
+          const watched = (a.watched||[]).slice().sort((x,y)=>x-y);
+          if(watched.length===0){
+            select.size = 2;
+            select.innerHTML = `<option disabled>尚未有紀錄</option>`;
+          }else{
+            select.size = Math.min(8, Math.max(2, watched.length));
+            for(const ep of watched){
+              const opt = new Option('Ep'+ep, String(ep));
+              select.add(opt);
+            }
+          }
+          card.appendChild(select);
+          latestGrid.appendChild(card);
+        }
+      }
+
+      function renderSearchResults(db, keyword){
+        searchResults.innerHTML = '';
+        const list = db.items.slice();
+        const results = !keyword ? [] : list.filter(a =>
+          a.name.toLowerCase().includes(keyword.toLowerCase())
+        );
+        if(!keyword){ return; }
+        if(results.length === 0){
+          searchResults.innerHTML = '<div class="muted">沒有符合的作品。</div>';
+          return;
+        }
+        for(const a of results){
+          const card = document.createElement('article');
+          card.className = 'card stack';
+          card.innerHTML = `
+            <img class="thumb" alt="${a.name}" src="${a.image || 'assets/hero.svg'}">
+            <div class="row" style="justify-content:space-between">
+              <strong>${a.name}</strong>
+              <span class="badge">觀看 ${a.watched?.length||0} / ${a.episodes}</span>
+            </div>
+          `;
+          const select = document.createElement('select');
+          select.multiple = true;
+          const watched = (a.watched||[]).slice().sort((x,y)=>x-y);
+          if(watched.length===0){
+            select.size = 2;
+            select.innerHTML = `<option disabled>尚未有紀錄</option>`;
+          }else{
+            select.size = Math.min(8, Math.max(2, watched.length));
+            for(const ep of watched){
+              select.add(new Option('Ep'+ep, String(ep)));
+            }
+          }
+          card.appendChild(select);
+          searchResults.appendChild(card);
+        }
+      }
+
+      // ────────────────────────────── 紀錄頁：互動 ──────────────────────────────
+      recordAnime.addEventListener('change', ()=> renderEpisodeBoxes(loadDB()));
+
+      recordSubmit.addEventListener('click', ()=>{
+        const db = loadDB();
+        const a = getSelectedAnime(db);
+        if(!a){ recordMsg.textContent = '請先選擇動畫。'; return; }
+        const selected = Array.from(episodeBoxes.querySelectorAll('input[type="checkbox"]:checked'))
+          .map(x=> Number(x.value));
+        if(selected.length === 0){
+          recordMsg.textContent = '請勾選至少一集。';
+          return;
+        }
+        a.watched = Array.from(new Set([...(a.watched||[]), ...selected])).sort((x,y)=>x-y);
+        a.updatedAt = Date.now();
+        saveDB(db);
+        recordMsg.textContent = `已加入：${selected.map(n=>'Ep'+n).join(', ')}`;
+        renderEpisodeBoxes(db);
+        renderLatestGrid(db);
+      });
+
+      // ────────────────────────────── 登記頁：新增/刪除 ──────────────────────────────
+      openCreateBtn.addEventListener('click', ()=> {
+        createForm.reset();
+        createMsg.textContent = '';
+        createDialog.showModal();
+      });
+
+      createForm.addEventListener('submit', (e)=>{
+        e.preventDefault();
+      });
+
+      document.getElementById('create-submit').addEventListener('click', async (e)=>{
+        e.preventDefault();
+        createMsg.textContent = '';
+        const name = createName.value.trim();
+        const eps  = createEps.value.trim();
+
+        if(!name){ createMsg.textContent = '請輸入名稱'; return; }
+        if(!/^[0-9]+$/.test(eps)){ createMsg.textContent = '集數僅能輸入數字'; return; }
+        const episodes = Math.max(0, parseInt(eps,10));
+        const db = loadDB();
+
+        // 避免重複名稱（同名視為同作品）
+        if(db.items.some(x=> x.name === name)){
+          createMsg.textContent = '此名稱已存在，若要重新上傳請先刪除舊資料。';
+          return;
+        }
+
+        let imageData = null;
+        const file = createImage.files?.[0];
+        if(file){
+          imageData = await fileToDataURL(file);
+        }
+
+        db.items.push({
+          id: uid(),
+          name,
+          episodes,
+          image: imageData || undefined,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          watched: []
+        });
+        saveDB(db);
+        createMsg.textContent = '已新增！';
+        createDialog.close();
+        refreshAll();
+      });
+
+      function fileToDataURL(file){
+        return new Promise((res,rej)=>{
+          const r = new FileReader();
+          r.onload = ()=> res(r.result);
+          r.onerror = rej;
+          r.readAsDataURL(file);
+        });
+      }
+
+      // ────────────────────────────── 總覽：搜尋 / 匯出 ──────────────────────────────
+      searchInput.addEventListener('input', ()=> renderSearchResults(loadDB(), searchInput.value.trim()));
+      searchClear.addEventListener('click', ()=>{
+        searchInput.value = '';
+        renderSearchResults(loadDB(), '');
+      });
+
+      exportBtn.addEventListener('click', ()=>{
+        const db = loadDB();
+        const rows = [
+          ['name','episodes_total','watched_count','watched_list','created_at','updated_at']
+        ];
+        for(const a of db.items){
+          rows.push([
+            a.name,
+            String(a.episodes),
+            String(a.watched?.length||0),
+            (a.watched||[]).sort((x,y)=>x-y).map(n=>'Ep'+n).join(' '),
+            new Date(a.createdAt).toISOString(),
+            new Date(a.updatedAt).toISOString()
+          ]);
+        }
+        const csv = rows.map(r => r.map(v => csvEscape(v)).join(',')).join('\r\n');
+        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'anime_watch_export.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+
+      function csvEscape(v){
+        const s = String(v ?? '');
+        if(/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+        return s;
+      }
+
+      // ────────────────────────────── 首次載入 ──────────────────────────────
+      // 若沒有任何作品，紀錄頁的下拉會提示去登記
+      refreshAll();
+    </script>
   </body>
 </html>
