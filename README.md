@@ -32,3 +32,4 @@ npx http-server -p 8080
   - 後端：使用 Cloudflare Workers / Netlify Functions / Express
   - 無後端：用第三方（例如 Formspree）
 - 想升級為 React / Next.js：保留 `styles.css` 的設計語彙，將區塊拆為元件即可。
+
