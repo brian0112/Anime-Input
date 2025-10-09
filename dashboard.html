@@ -100,9 +100,7 @@
       const list = db.items.slice().filter(a => a.name.toLowerCase().includes(kw.toLowerCase()));
       if(list.length===0){ searchResults.innerHTML='<div class="muted">沒有符合的作品。</div>'; return; }
       for(const a of list){
-        const el = document.createElement('article');
-        el.className = 'card';
-        el.style.display='grid'; el.style.gap='.5rem';
+        const el = document.createElement('article'); el.className='card'; el.style.display='grid'; el.style.gap='.5rem';
         el.innerHTML = `
           <img class="thumb" alt="${a.name}" src="${a.image || 'assets/hero.svg'}">
           <div class="row" style="display:flex;justify-content:space-between;align-items:center">
@@ -148,9 +146,9 @@
         rows.push([ a?.name ?? animeId, String(count), ranges.join(','), '', `（${count}集）` ]);
         sum += count;
       }
-      rows.push(['總計', String(sum)]);               // A-n+2 / B-n+2
-      rows[0][4] = `速度評價(${sum}集)`;             // E-1 顯示本週總集數
-      if(rows.length>=3){ rows[1][4] = speedLabel(sum); } // E-2 放評價
+      rows.push(['總計', String(sum)]);
+      rows[0][4] = `速度評價(${sum}集)`;
+      if(rows.length>=3){ rows[1][4] = speedLabel(sum); }
 
       const csv = rows.map(r=> r.map(csvEscape).join(',')).join('\r\n');
       const filename = `anime_watch_${formatWeekRangeFromISO(weekStartISO).replace(/[^\d~–]/g,'').replace('–','-')}.csv`;
@@ -162,20 +160,16 @@
       for(const w of weeks){ exportWeekCSV(w); }
     }
 
-    // 匯出按鈕（本頁以「最新週」為主）
     exportWeekBtn.addEventListener('click', ()=>{
       const weeks = Array.from(new Set(loadLocal().logs.map(l=> l.weekStartISO))).sort();
-      const last = weeks[weeks.length-1] || null;
-      const use = last || (new Date(), new Date()); // 沒資料就用本週
-      exportWeekCSV(last || new Date().toISOString());
+      const last = weeks[weeks.length-1] || new Date().toISOString();
+      exportWeekCSV(last);
     });
     exportAllBtn.addEventListener('click', ()=> exportAllWeeksCSV());
 
     await bootstrap();
-    // 拉一次雲端最新
     try{ const latest = await cloudGetAll(); saveLocal(latest); }catch(_){}
     render();
   </script>
-  <script src="script.js" defer></script>
 </body>
 </html>
