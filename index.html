@@ -1,633 +1,224 @@
 <!doctype html>
 <html lang="zh-Hant">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>動畫進度</title>
-    <meta name="description" content="登記動畫、輸入觀看紀錄、週次總覽與匯出。"/>
-    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css" />
-    <meta property="og:title" content="動畫進度" />
-    <meta property="og:description" content="登記動畫、輸入觀看紀錄、週次總覽與匯出。"/>
-    <meta property="og:type" content="website" />
-    <style>
-      .tabs { display:flex; gap:.5rem; flex-wrap:wrap; }
-      .tabs a { text-decoration:none; }
-      .hidden{ display:none !important }
-      .stack{ display:grid; gap:1rem }
-      .row{ display:flex; gap:.75rem; align-items:center; flex-wrap:wrap }
-      .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:1rem }
-      .grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:1rem }
-      .pill{ border:1px solid var(--border); padding:.25rem .6rem; border-radius:999px; font-size:.9rem; color:var(--muted)}
-      .muted{ color:var(--muted) }
-      .thumb{ width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:.75rem; border:1px solid var(--border); background:#0002 }
-      .badge{ font-size:.8rem; padding:.2rem .5rem; border-radius:.5rem; border:1px solid var(--border); }
-      .badge.complete{ background:var(--brand); color:var(--brand-ink); border-color:transparent; font-weight:700; }
-      dialog{ border:1px solid var(--border); background:var(--panel); color:var(--text); border-radius:1rem; padding:1rem; max-width:560px }
-      dialog::backdrop{ background: rgba(0,0,0,.4) }
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>輸入「動畫紀錄」</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .tabs{display:flex;gap:.5rem;flex-wrap:wrap}
+    .pill{border:1px solid var(--border);padding:.25rem .6rem;border-radius:999px;color:var(--muted);text-decoration:none}
+    .select-anime{position:relative}
+    .select-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:.75rem;border:1px solid var(--border);background:transparent;color:var(--text);padding:.6rem .9rem;border-radius:.8rem;cursor:pointer}
+    .select-btn img{width:36px;height:36px;border-radius:.5rem;object-fit:cover;border:1px solid var(--border)}
+    .select-list{position:absolute;z-index:20;inset:auto 0 0 0;transform:translateY(100%);background:var(--panel);border:1px solid var(--border);border-radius:.8rem;padding:.4rem;max-height:300px;overflow:auto;box-shadow:0 10px 30px #0005}
+    .select-item{display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.5rem .6rem;border-radius:.6rem;cursor:pointer}
+    .select-item:hover{background:#ffffff10}
+    .badge{font-size:.8rem;padding:.2rem .5rem;border-radius:.5rem;border:1px solid var(--border)}
+    .badge.complete{background:var(--brand);color:var(--brand-ink);border-color:transparent;font-weight:700}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    @media (max-width: 1024px){ .two-col{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <header class="site-header container">
+    <a class="brand" href="index.html" aria-label="首頁">🎞️ 動畫進度</a>
+    <nav class="nav tabs" aria-label="主選單">
+      <a class="pill" href="index.html">動畫紀錄</a>
+      <a class="pill" href="manage.html">動畫登記</a>
+      <a class="pill" href="dashboard.html">觀看總覽</a>
+      <button id="themeToggle" class="btn outline" aria-pressed="false" aria-label="切換深淺色" style="margin-left:auto">主題</button>
+    </nav>
+  </header>
 
-      /* 自訂動畫下拉（帶縮圖） */
-      .select-anime { position:relative; }
-      .select-btn { width:100%; display:flex; align-items:center; justify-content:space-between; gap:.75rem; border:1px solid var(--border); background:transparent; color:var(--text); padding:.6rem .9rem; border-radius:.8rem; cursor:pointer; }
-      .select-btn .left { display:flex; align-items:center; gap:.75rem; min-width:0; }
-      .select-btn img { width:36px; height:36px; border-radius:.5rem; object-fit:cover; border:1px solid var(--border); }
-      .select-btn .name { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-      .select-list { position:absolute; z-index:20; inset: auto 0 0 0; transform: translateY(100%); background:var(--panel); border:1px solid var(--border); border-radius:.8rem; padding:.4rem; max-height:300px; overflow:auto; box-shadow: 0 10px 30px #0005; }
-      .select-item { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.5rem .6rem; border-radius:.6rem; cursor:pointer; }
-      .select-item:hover{ background:#ffffff10 }
-      .select-item .left{ display:flex; align-items:center; gap:.6rem; }
-      .select-item img { width:40px; height:40px; border-radius:.5rem; object-fit:cover; border:1px solid var(--border); }
-      .kbd{ font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:.8rem; padding:.1rem .35rem; border:1px solid var(--border); border-radius:.35rem; color:var(--muted) }
+  <main class="container section">
+    <h2>輸入「動畫紀錄」</h2>
 
-      /* 集數控制列 */
-      .range-row input[type="number"]{ width:6rem; }
-
-      /* 管理頁卡片：兩欄、左圖右文，右上紅色垃圾桶 */
-      :root{ --danger:#ef4444; --danger-ink:#ffffff; }
-      .manage-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:1rem }
-      .manage-card{ display:grid; grid-template-columns: 1.3fr 1fr; gap:1rem; border:1px solid var(--border); background:var(--panel); border-radius:1rem; padding:1rem; position:relative; }
-      .manage-card .thumb{ aspect-ratio:16/9; width:100%; }
-      .manage-card .right{ display:grid; gap:.5rem; padding-right:2.4rem; } /* 右上角保留空間給垃圾桶 */
-      .manage-card .title-row{ display:flex; justify-content:space-between; gap:.75rem; align-items:flex-start }
-      .icon-btn{ position:absolute; top:.6rem; right:.6rem; border:1px solid transparent; background:var(--danger); color:var(--danger-ink); border-radius:.6rem; padding:.45rem; cursor:pointer; z-index:2; box-shadow:0 4px 14px rgba(239,68,68,.35); }
-      .icon-btn:hover{ filter:brightness(1.1) }
-      .icon-trash{ width:18px; height:18px; display:block }
-      .ellipsis-1{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100% }
-
-      @media (max-width: 1024px){
-        .two-col{ grid-template-columns:1fr }
-        .grid-3{ grid-template-columns:1fr }
-        .manage-grid{ grid-template-columns:1fr }
-      }
-    </style>
-  </head>
-  <body>
-    <header class="site-header container">
-      <a class="brand" href="#record" aria-label="首頁">🎞️ 動畫進度</a>
-      <nav class="nav tabs" aria-label="主選單">
-        <a href="#record" class="pill">動畫紀錄</a>
-        <a href="#manage" class="pill">動畫登記</a>
-        <a href="#dashboard" class="pill">觀看總覽</a>
-      </nav>
-      <button id="themeToggle" class="btn outline" aria-pressed="false" aria-label="切換深淺色">主題</button>
-    </header>
-
-    <main id="app">
-      <!-- ───────────────────────────────── 主頁：輸入觀看紀錄 ───────────────────────────────── -->
-      <section id="record" class="container section">
-        <h2>➊ 輸入「動畫紀錄」</h2>
-        <div class="card stack">
-          <div class="two-col">
-            <!-- 動畫選擇 -->
-            <div class="stack">
-              <label>選擇動畫</label>
-              <div class="select-anime" id="animeSelect">
-                <button class="select-btn" id="animeSelectBtn" aria-haspopup="listbox" aria-expanded="false">
-                  <div class="left">
-                    <img alt="" src="assets/hero.svg">
-                    <span class="name">（尚無作品，請先到「動畫登記」新增）</span>
-                  </div>
-                  <span class="badge">觀看 0 / 0</span>
-                </button>
-                <div class="select-list hidden" id="animeSelectList" role="listbox" tabindex="-1" aria-label="選擇動畫（上下鍵移動，Enter 確認）"></div>
+    <div class="card" style="display:grid;gap:1rem">
+      <div class="two-col">
+        <div>
+          <label>選擇動畫</label>
+          <div class="select-anime" id="animeSelect">
+            <button class="select-btn" id="animeSelectBtn" aria-haspopup="listbox" aria-expanded="false">
+              <div style="display:flex;align-items:center;gap:.75rem;min-width:0">
+                <img alt="" src="assets/hero.svg">
+                <span class="name" style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">（尚無作品，請先到「動畫登記」新增）</span>
               </div>
-              <small class="muted">鍵盤 <span class="kbd">↑</span><span class="kbd">↓</span> 選取，<span class="kbd">Enter</span> 確認。</small>
-            </div>
-
-            <!-- 集數選擇（週次在上方 + 區間輸入） -->
-            <div class="stack">
-              <!-- 週次選擇（最近 12 週，週一→週日） -->
-              <div class="row">
-                <label>選擇週次</label>
-                <select id="week-select"></select>
-              </div>
-
-              <div class="row" style="justify-content:space-between">
-                <label>選擇集數</label>
-                <span class="muted" id="episodes-hint">已看 0 / 總 0</span>
-              </div>
-
-              <div class="row range-row">
-                <input id="range-start" type="number" min="1" step="1" placeholder="起始">
-                <span>—</span>
-                <input id="range-end" type="number" min="1" step="1" placeholder="結束">
-                <button id="range-submit" class="btn primary">加入</button>
-                <span id="range-msg" class="muted" aria-live="polite"></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="row">
-            <span id="record-msg" class="muted" aria-live="polite"></span>
+              <span class="badge">觀看 0 / 0</span>
+            </button>
+            <div class="select-list hidden" id="animeSelectList" role="listbox" tabindex="-1"></div>
           </div>
         </div>
-      </section>
 
-      <!-- ───────────────────────────────── 第二頁：登記動畫 ───────────────────────────────── -->
-      <section id="manage" class="container section">
-        <h2>➋ 動畫登記 / 管理</h2>
-        <div class="row">
-          <button id="open-create" class="btn primary">新增動畫</button>
-          <span class="muted">新增後會出現在「動畫紀錄」與「觀看總覽」。</span>
-        </div>
-
-        <div class="section card stack">
-          <h3>已登記動畫</h3>
-          <div id="manage-list" class="manage-grid"></div>
-        </div>
-
-        <!-- 建立動畫對話框（取消可正常關閉） -->
-        <dialog id="create-dialog">
-          <form class="stack" id="create-form" method="dialog">
-            <h3>新增動畫</h3>
-            <label>動畫圖片（選填）
-              <input id="create-image" type="file" accept="image/*">
-            </label>
-            <label>動畫名稱
-              <input id="create-name" type="text" placeholder="例如：星際漂流記" required>
-            </label>
-            <label>動畫集數
-              <input id="create-episodes" inputmode="numeric" pattern="[0-9]*" placeholder="例如：12" required>
-            </label>
-            <div class="row">
-              <button class="btn primary" id="create-submit" type="button">儲存</button>
-              <button class="btn" id="create-cancel" type="button">取消</button>
-              <span id="create-msg" class="muted" aria-live="polite"></span>
-            </div>
-          </form>
-        </dialog>
-      </section>
-
-      <!-- ───────────────────────────────── 第三頁：總覽 / 搜尋 / 匯出 ───────────────────────────────── -->
-      <section id="dashboard" class="container section">
-        <h2>➌ 觀看總覽 / 搜尋 / 匯出</h2>
-
-        <div class="row" style="gap:.5rem; flex-wrap:wrap">
-          <button id="export-csv-week" class="btn outline">匯出本週（CSV）</button>
-          <button id="export-csv-all" class="btn outline">匯出全部週次（多檔 CSV）</button>
-          <span class="muted">E 欄的「速度評價」稍後依你規則更新。</span>
-        </div>
-
-        <div class="section">
-          <h3>最新登記的 9 部作品</h3>
-          <div id="latest-grid" class="grid-3"></div>
-        </div>
-
-        <div class="section card">
-          <h3>搜尋其他作品</h3>
-          <div class="row" style="gap:.5rem">
-            <input id="search-input" type="search" placeholder="輸入關鍵字..." />
-            <button id="search-clear" class="btn">清除</button>
+        <div>
+          <div style="display:flex;align-items:center;gap:.75rem">
+            <label>選擇週次</label>
+            <select id="week-select"></select>
           </div>
-          <div id="search-results" class="grid-3" style="margin-top:1rem"></div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.6rem">
+            <label>選擇集數</label>
+            <span class="muted" id="episodes-hint">已看 0 / 總 0</span>
+          </div>
+
+          <div class="row range-row" style="display:flex;gap:.75rem;align-items:center;margin-top:.4rem">
+            <input id="range-start" type="number" min="1" step="1" placeholder="起始" style="width:6rem">
+            <span>—</span>
+            <input id="range-end" type="number" min="1" step="1" placeholder="結束" style="width:6rem">
+            <button id="range-submit" class="btn primary">加入</button>
+            <span id="range-msg" class="muted" aria-live="polite"></span>
+          </div>
         </div>
-      </section>
-    </main>
+      </div>
+      <span id="record-msg" class="muted" aria-live="polite"></span>
+    </div>
+  </main>
 
-    <footer class="site-footer container">
-      <small>&copy; <span id="year"></span> 動畫進度 · 由你打造 ✨</small>
-    </footer>
+  <footer class="site-footer container">
+    <small>&copy; <span id="year"></span> 動畫進度 · 由你打造 ✨</small>
+  </footer>
 
-    <!-- Starter 腳本 -->
-    <script src="script.js" defer></script>
+  <script type="module">
+    import {
+      API_URL, bootstrap, loadLocal, saveLocal, cloudEnabled,
+      cloudGetAll, cloudAddLog, weekStartISOFromDate, formatWeekRangeFromISO,
+      recentWeeks, autoUpdateWeekSelect, clamp, nextUnwatched, badgeHTML
+    } from './app.js';
 
-    <!-- 本頁專用邏輯 -->
-    <script type="module">
-  /*********** CONFIG ***********/
-  const API_URL = 'https://script.google.com/macros/s/AKfycbwn3uHYaGgRsGg2y0zV9SHpBkbhG9tP6OQtN_qD8gF7QXCyeBXsCxNrjzKDsGkoof5H/exec'; // 例如：https://script.google.com/macros/s/XXXXX/exec
-  const DB_KEY = 'animeDB_v2_cloud';
-  /******************************/
+    document.getElementById('year').textContent = new Date().getFullYear();
 
-  // ========== 公用 & 本機儲存 ==========
-  function loadLocal(){
-    try{ return JSON.parse(localStorage.getItem(DB_KEY)) ?? { items:[], logs:[] }; }
-    catch{ return { items:[], logs:[] }; }
-  }
-  function saveLocal(db){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
-  function uid(){ return Math.random().toString(36).slice(2,10); }
-  const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
-  document.getElementById('year').textContent = new Date().getFullYear();
+    const weekSelect      = document.getElementById('week-select');
+    const animeSelectBtn  = document.getElementById('animeSelectBtn');
+    const animeSelectList = document.getElementById('animeSelectList');
+    const episodesHint    = document.getElementById('episodes-hint');
+    const rangeStart      = document.getElementById('range-start');
+    const rangeEnd        = document.getElementById('range-end');
+    const rangeSubmit     = document.getElementById('range-submit');
+    const rangeMsg        = document.getElementById('range-msg');
 
-  // ========== 週次工具（台北時區，本地時間） ==========
-  function mondayOf(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); const day=x.getDay(); const off=(day+6)%7; x.setDate(x.getDate()-off); x.setHours(0,0,0,0); return x; }
-  function sundayOf(d){ const m=mondayOf(d); const s=new Date(m); s.setDate(m.getDate()+6); s.setHours(23,59,59,999); return s; }
-  function weekLabel(d){ const m=mondayOf(d), s=sundayOf(d); const fmt=dt=> String(dt.getMonth()+1).padStart(2,'0')+'/'+String(dt.getDate()).padStart(2,'0'); return `${fmt(m)}–${fmt(s)}`; }
-  function weekStartISOFromDate(d){ return mondayOf(d).toISOString(); }
-  function formatWeekRangeFromISO(iso){ return weekLabel(new Date(iso)); }
-  function recentWeeks(n=12){ const arr=[]; const now=new Date(); const base=mondayOf(now); for(let i=0;i<n;i++){ const st=new Date(base); st.setDate(base.getDate()-7*i); arr.push(st);} return arr; }
+    let currentAnimeId = null;
 
-  // ========== DOM 參照 ==========
-  const weekSelect      = document.getElementById('week-select');
-  const animeSelectBtn  = document.getElementById('animeSelectBtn');
-  const animeSelectList = document.getElementById('animeSelectList');
-  const episodesHint    = document.getElementById('episodes-hint');
-  const rangeStart      = document.getElementById('range-start');
-  const rangeEnd        = document.getElementById('range-end');
-  const rangeSubmit     = document.getElementById('range-submit');
-  const rangeMsg        = document.getElementById('range-msg');
-  const recordMsg       = document.getElementById('record-msg');
-
-  const openCreateBtn   = document.getElementById('open-create');
-  const createDialog    = document.getElementById('create-dialog');
-  const createForm      = document.getElementById('create-form');
-  const createImage     = document.getElementById('create-image');
-  const createName      = document.getElementById('create-name');
-  const createEpsInput  = document.getElementById('create-episodes');
-  const createSubmit    = document.getElementById('create-submit');
-  const createCancel    = document.getElementById('create-cancel');
-  const createMsg       = document.getElementById('create-msg');
-  const manageList      = document.getElementById('manage-list');
-
-  const latestGrid      = document.getElementById('latest-grid');
-  const searchInput     = document.getElementById('search-input');
-  const searchClear     = document.getElementById('search-clear');
-  const searchResults   = document.getElementById('search-results');
-  const exportWeekBtn   = document.getElementById('export-csv-week');
-  const exportAllBtn    = document.getElementById('export-csv-all');
-
-  // ========== 狀態 ==========
-  let currentAnimeId = null;
-
-  // ========== 後端（Apps Script）API ==========
-  const cloudEnabled = !!API_URL;
-  async function cloudGetAll(){
-    const r = await fetch(API_URL+'?action=getAll');
-    if(!r.ok) throw new Error('getAll failed');
-    return r.json();
-  }
-  async function cloudAddAnime(a){
-    const r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'addAnime', data:a }) });
-    if(!r.ok) throw new Error('addAnime failed');
-  }
-  async function cloudDeleteAnime(id){
-    const r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'deleteAnime', id }) });
-    if(!r.ok) throw new Error('deleteAnime failed');
-  }
-  async function cloudAddLog(animeId, weekStartISO, eps){
-    const r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'addLog', data:{ animeId, weekStartISO, eps } }) });
-    if(!r.ok) throw new Error('addLog failed');
-  }
-
-  // 啟動時：若有雲端，就以雲端為準；沒有就用本機
-  async function bootstrap(){
-    try{
-      if(cloudEnabled){
-        const data = await cloudGetAll();
-        saveLocal(data);
-      }else{
-        // 無雲端：若舊版 v2/v1 還在，可自用
-        const local = loadLocal();
-        saveLocal(local);
-      }
-    }catch(e){
-      console.warn('Cloud init failed, falling back to local:', e);
+    function renderWeekSelect(){
+      weekSelect.innerHTML = '';
+      recentWeeks(12).forEach((startDate, i)=>{
+        const opt = new Option(
+          new Intl.DateTimeFormat('zh-Hant', { month:'2-digit', day:'2-digit' })
+            .formatRange(startDate, new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()+6)) || '',
+          weekStartISOFromDate(startDate)
+        );
+        if(i===0) opt.selected = true;
+        weekSelect.add(opt);
+      });
     }
-  }
+    autoUpdateWeekSelect(weekSelect); // 進頁/回到頁面都會更新週次選單
 
-  // ========== UI 輔助 ==========
-  function isComplete(a){ return (a.watched?.length||0) >= a.episodes && a.episodes>0; }
-  function badgeHTML(a){ return `<span class="badge ${isComplete(a)?'complete':''}">觀看 ${a.watched?.length||0} / ${a.episodes}</span>`; }
-  function nextUnwatched(a){ const set=new Set(a.watched||[]); for(let i=1;i<=a.episodes;i++){ if(!set.has(i)) return i; } return null; }
-  function renderWeekSelect(){
-    const weeks = recentWeeks(12);
-    weekSelect.innerHTML = '';
-    weeks.forEach((startDate, idx)=>{
-      const opt = new Option(weekLabel(startDate), weekStartISOFromDate(startDate));
-      if(idx===0) opt.selected = true;
-      weekSelect.add(opt);
+    function refresh(){
+      const db = loadLocal();
+      renderAnimeSelect(db);
+      renderEpisodesUI(db);
+    }
+
+    function renderAnimeSelect(db){
+      const items = db.items.slice().sort((a,b)=> b.createdAt - a.createdAt);
+      animeSelectList.innerHTML = '';
+
+      if(items.length === 0){
+        animeSelectBtn.querySelector('.name').textContent = '（尚無作品，請先到「動畫登記」新增）';
+        animeSelectBtn.querySelector('img').src = 'assets/hero.svg';
+        animeSelectBtn.querySelector('.badge').textContent = '觀看 0 / 0';
+        currentAnimeId = null;
+        return;
+      }
+      if(!items.some(x=> x.id===currentAnimeId)) currentAnimeId = items[0].id;
+
+      for(const a of items){
+        const row = document.createElement('div');
+        row.className = 'select-item';
+        row.innerHTML = `
+          <div style="display:flex;align-items:center;gap:.6rem">
+            <img alt="" src="${a.image || 'assets/hero.svg'}" style="width:40px;height:40px;border-radius:.5rem;object-fit:cover;border:1px solid var(--border)">
+            <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:18rem">${a.name}</div>
+          </div>
+          ${badgeHTML(a)}
+        `;
+        row.addEventListener('click', ()=>{
+          currentAnimeId = a.id;
+          closeList();
+          updateBtn(a); renderEpisodesUI(loadLocal());
+        });
+        animeSelectList.appendChild(row);
+      }
+      const cur = db.items.find(x=> x.id===currentAnimeId);
+      if(cur) updateBtn(cur);
+    }
+    function updateBtn(a){
+      animeSelectBtn.querySelector('img').src = a.image || 'assets/hero.svg';
+      animeSelectBtn.querySelector('.name').textContent = a.name;
+      const b = animeSelectBtn.querySelector('.badge');
+      b.textContent = `觀看 ${a.watched?.length||0} / ${a.episodes}`;
+      animeSelectBtn.setAttribute('aria-expanded','false');
+    }
+    function openList(){ animeSelectList.classList.remove('hidden'); animeSelectBtn.setAttribute('aria-expanded','true'); }
+    function closeList(){ animeSelectList.classList.add('hidden'); animeSelectBtn.setAttribute('aria-expanded','false'); }
+    animeSelectBtn.addEventListener('click', ()=> (animeSelectBtn.getAttribute('aria-expanded')==='true') ? closeList() : openList());
+    document.addEventListener('click', (e)=>{ if(!e.target.closest('#animeSelect')) closeList(); });
+
+    function renderEpisodesUI(db){
+      const a = db.items.find(x=> x.id===currentAnimeId);
+      rangeMsg.textContent = '';
+      if(!a){
+        episodesHint.textContent = '已看 0 / 總 0';
+        rangeStart.value = ''; rangeEnd.value='';
+        return;
+      }
+      episodesHint.textContent = `已看 ${a.watched?.length||0} / 總 ${a.episodes}`;
+      const next = nextUnwatched(a) ?? 1;
+      rangeStart.min='1'; rangeStart.max=String(a.episodes);
+      rangeEnd.min='1'; rangeEnd.max=String(a.episodes);
+      rangeStart.value=String(next); rangeEnd.value=String(next);
+    }
+
+    rangeSubmit.addEventListener('click', async ()=>{
+      const db = loadLocal();
+      const a = db.items.find(x=> x.id===currentAnimeId);
+      if(!a){ rangeMsg.textContent='請先選擇動畫。'; return; }
+      const weekStartISO = weekSelect.value || weekStartISOFromDate(new Date());
+      let s = parseInt(rangeStart.value,10), e = parseInt(rangeEnd.value,10);
+      if(!Number.isFinite(s)||!Number.isFinite(e)){ rangeMsg.textContent='請輸入有效的起訖集數。'; return; }
+      s = clamp(s,1,a.episodes); e = clamp(e,1,a.episodes); if(s>e) [s,e]=[e,s];
+
+      const watched = new Set(a.watched||[]), add=[], conflict=[];
+      for(let i=s;i<=e;i++) (watched.has(i)?conflict:add).push(i);
+      if(conflict.length){ rangeMsg.textContent=`已有紀錄：${conflict.map(n=>'Ep'+n).join(', ')}。請調整區間後再試。`; return; }
+      if(add.length===0){ rangeMsg.textContent='此區間沒有可新增的集數。'; return; }
+
+      // 本機
+      a.watched = Array.from(new Set([...(a.watched||[]), ...add])).sort((x,y)=>x-y);
+      a.updatedAt = Date.now();
+      const exist = (db.logs||[]).find(l=> l.animeId===a.id && l.weekStartISO===weekStartISO);
+      if(exist){ exist.eps = Array.from(new Set([...(exist.eps||[]), ...add])).sort((x,y)=>x-y); exist.createdAt=Date.now(); }
+      else { db.logs.push({ animeId:a.id, weekStartISO, eps:add.slice().sort((x,y)=>x-y), createdAt:Date.now() }); }
+      saveLocal(db);
+
+      // 雲端
+      try{
+        await cloudAddLog(a.id, weekStartISO, add);
+        const latest = await cloudGetAll();
+        saveLocal(latest);
+        rangeMsg.textContent = `已加入：${add.map(n=>'Ep'+n).join(', ')}（週次：${formatWeekRangeFromISO(weekStartISO)}）`;
+        refresh();
+      }catch(err){
+        rangeMsg.textContent = '雲端同步失敗，但已保存在本機。';
+        console.error(err);
+      }
     });
-  }
-  function renderWeekSelectIfEmpty(){
-    if(weekSelect.options.length === 0) renderWeekSelect();
-  }
 
-  // ========== 畫面刷新 ==========
-  function refreshAll(){
-    const db = loadLocal();
-    renderWeekSelectIfEmpty();
-    renderAnimeSelect(db);
-    renderEpisodesUI(db);
-    renderManageList(db);
-    renderLatestGrid(db);
-    renderSearchResults(db, searchInput.value?.trim() || '');
-  }
-
-  // A) 動畫自訂下拉
-  function renderAnimeSelect(db){
-    const items = db.items.slice().sort((a,b)=> b.createdAt - a.createdAt);
-    animeSelectList.innerHTML = '';
-
-    if(items.length === 0){
-      animeSelectBtn.querySelector('.name').textContent = '（尚無作品，請先到「動畫登記」新增）';
-      animeSelectBtn.querySelector('img').src = 'assets/hero.svg';
-      animeSelectBtn.querySelector('.badge').textContent = '觀看 0 / 0';
-      currentAnimeId = null;
-      return;
-    }
-    if(!items.some(x=> x.id === currentAnimeId)){
-      currentAnimeId = items[0].id;
-    }
-    for(const a of items){
-      const row = document.createElement('div');
-      row.className = 'select-item';
-      row.setAttribute('role','option');
-      row.dataset.id = a.id;
-      row.innerHTML = `
-        <div class="left">
-          <img alt="" src="${a.image || 'assets/hero.svg'}">
-          <div class="ellipsis-1">${a.name}</div>
-        </div>
-        ${badgeHTML(a)}
-      `;
-      row.addEventListener('click', ()=>{
-        currentAnimeId = a.id;
-        closeAnimeList();
-        updateAnimeButton(a);
-        renderEpisodesUI(loadLocal());
-      });
-      animeSelectList.appendChild(row);
-    }
-    const cur = db.items.find(x=> x.id === currentAnimeId);
-    if(cur) updateAnimeButton(cur);
-  }
-  function updateAnimeButton(a){
-    animeSelectBtn.querySelector('img').src = a.image || 'assets/hero.svg';
-    animeSelectBtn.querySelector('.name').textContent = a.name;
-    const b = animeSelectBtn.querySelector('.badge');
-    b.innerHTML = `觀看 ${a.watched?.length||0} / ${a.episodes}`;
-    b.classList.toggle('complete', isComplete(a));
-    animeSelectBtn.setAttribute('aria-expanded','false');
-  }
-  function openAnimeList(){ animeSelectList.classList.remove('hidden'); animeSelectBtn.setAttribute('aria-expanded','true'); animeSelectList.focus(); }
-  function closeAnimeList(){ animeSelectList.classList.add('hidden'); animeSelectBtn.setAttribute('aria-expanded','false'); }
-  animeSelectBtn.addEventListener('click', ()=> { const open = animeSelectBtn.getAttribute('aria-expanded')==='true'; open?closeAnimeList():openAnimeList(); });
-  document.addEventListener('click', (e)=>{ if(!e.target.closest('#animeSelect')) closeAnimeList(); });
-
-  // B) 集數（區間 + 週次）
-  function renderEpisodesUI(db){
-    const a = db.items.find(x=> x.id === currentAnimeId);
-    rangeMsg.textContent = '';
-    recordMsg.textContent = '';
-
-    if(!a){
-      episodesHint.textContent = '已看 0 / 總 0';
-      rangeStart.value = ''; rangeEnd.value = '';
-      return;
-    }
-    episodesHint.textContent = `已看 ${a.watched?.length||0} / 總 ${a.episodes}`;
-    const next = nextUnwatched(a) ?? 1;
-    rangeStart.min='1'; rangeStart.max=String(a.episodes);
-    rangeEnd.min='1'; rangeEnd.max=String(a.episodes);
-    rangeStart.value=String(next); rangeEnd.value=String(next);
-  }
-  weekSelect.addEventListener('change', ()=>{ rangeMsg.textContent=''; });
-
-  rangeSubmit.addEventListener('click', async ()=>{
-    const db = loadLocal();
-    const a = db.items.find(x=> x.id === currentAnimeId);
-    if(!a){ rangeMsg.textContent = '請先選擇動畫。'; return; }
-
-    const weekStartISO = weekSelect.value;
-    let s = parseInt(rangeStart.value,10);
-    let e = parseInt(rangeEnd.value,10);
-    if(!Number.isFinite(s) || !Number.isFinite(e)){ rangeMsg.textContent = '請輸入有效的起訖集數。'; return; }
-    s = clamp(s,1,a.episodes); e = clamp(e,1,a.episodes); if(s>e) [s,e]=[e,s];
-
-    const watched = new Set(a.watched||[]);
-    const all=[], conflicts=[];
-    for(let i=s;i<=e;i++){ (watched.has(i)?conflicts:all).push(i); }
-    if(conflicts.length){ rangeMsg.textContent = `已有紀錄：${conflicts.map(n=>'Ep'+n).join(', ')}。請調整區間後再試。`; return; }
-    if(all.length===0){ rangeMsg.textContent = '此區間沒有可新增的集數。'; return; }
-
-    // 本機：更新 watched / logs
-    a.watched = Array.from(new Set([...(a.watched||[]), ...all])).sort((x,y)=>x-y);
-    a.updatedAt = Date.now();
-    const exist = (db.logs||[]).find(l=> l.animeId===a.id && l.weekStartISO===weekStartISO);
-    if(exist){ exist.eps = Array.from(new Set([...(exist.eps||[]), ...all])).sort((x,y)=>x-y); exist.createdAt = Date.now(); }
-    else { db.logs.push({ animeId:a.id, weekStartISO, eps: all.slice().sort((x,y)=>x-y), createdAt: Date.now() }); }
-    saveLocal(db);
-
-    // 雲端：寫入
-    try{
-      if(cloudEnabled){
-        await cloudAddLog(a.id, weekStartISO, all);
-        // 重新拉雲端以避免差異
-        const latest = await cloudGetAll();
-        saveLocal(latest);
-      }
-      rangeMsg.textContent = `已加入：${all.map(n=>'Ep'+n).join(', ')}（週次：${formatWeekRangeFromISO(weekStartISO)}）`;
-      refreshAll();
-    }catch(err){
-      rangeMsg.textContent = '雲端同步失敗，但已保存在本機（可稍後再試）。';
-      console.error(err);
-    }
-  });
-
-  // C) 登記頁
-  function renderManageList(db){
-    manageList.innerHTML = '';
-    if(db.items.length===0){ manageList.innerHTML = '<div class="muted">尚未登記任何動畫。</div>'; return; }
-    const items = db.items.slice().sort((a,b)=> a.name.localeCompare(b.name,'zh-Hant'));
-    for(const a of items){
-      const card = document.createElement('article');
-      card.className = 'manage-card';
-      card.innerHTML = `
-        <img class="thumb" alt="${a.name}" src="${a.image || 'assets/hero.svg'}">
-        <div class="right">
-          <div class="title-row">
-            <strong class="ellipsis-1" title="${a.name}">${a.name}</strong>
-            ${badgeHTML(a)}
-          </div>
-          <small class="muted">共 ${a.episodes} 集 · 已看 ${a.watched?.length||0} 集</small>
-        </div>
-        <button class="icon-btn" title="刪除" aria-label="刪除">
-          <svg class="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-            <path d="M10 11v6"></path>
-            <path d="M14 11v6"></path>
-            <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
-          </svg>
-        </button>
-      `;
-      card.querySelector('.icon-btn').addEventListener('click', async ()=>{
-        if(!confirm(`確定要刪除「${a.name}」嗎？此動作無法復原。`)) return;
-        // 本機刪除
-        const db2 = loadLocal();
-        const idx = db2.items.findIndex(x=>x.id===a.id);
-        if(idx>-1) db2.items.splice(idx,1);
-        db2.logs = (db2.logs||[]).filter(l=> l.animeId!==a.id);
-        saveLocal(db2);
-        try{
-          if(cloudEnabled){
-            await cloudDeleteAnime(a.id);
-            const latest = await cloudGetAll();
-            saveLocal(latest);
-          }
-          refreshAll();
-        }catch(err){
-          alert('雲端刪除失敗，但本機已刪除。請稍後再同步。');
-          console.error(err);
-          refreshAll();
-        }
-      });
-      manageList.appendChild(card);
-    }
-  }
-
-  openCreateBtn.addEventListener('click', ()=>{ createForm.reset(); createMsg.textContent=''; createDialog.showModal(); });
-  createCancel.addEventListener('click', ()=> createDialog.close());
-  createDialog.addEventListener('cancel', (e)=>{ e.preventDefault(); createDialog.close(); });
-
-  createSubmit.addEventListener('click', async ()=>{
-    createMsg.textContent = '';
-    const name = createName.value.trim();
-    const eps  = createEpsInput.value.trim();
-    if(!name){ createMsg.textContent='請輸入名稱'; return; }
-    if(!/^[0-9]+$/.test(eps)){ createMsg.textContent='集數僅能輸入數字'; return; }
-    const episodes = Math.max(1, parseInt(eps,10));
-    let imageData = null;
-    const file = createImage.files?.[0]; if(file){ imageData = await fileToDataURL(file); }
-
-    // 本機新增
-    const db = loadLocal();
-    if(db.items.some(x=> x.name===name)){ createMsg.textContent='此名稱已存在，若要重新上傳請先刪除舊資料。'; return; }
-    const id = uid();
-    db.items.push({ id, name, episodes, image:imageData||undefined, createdAt:Date.now(), updatedAt:Date.now(), watched:[] });
-    saveLocal(db);
-    currentAnimeId = id;
-
-    try{
-      if(cloudEnabled){
-        await cloudAddAnime({ id, name, episodes, image:imageData||'', createdAt:Date.now(), updatedAt:Date.now() });
-        const latest = await cloudGetAll();
-        saveLocal(latest);
-      }
-      createDialog.close();
-      refreshAll();
-    }catch(err){
-      createMsg.textContent = '雲端同步失敗，但本機已新增（可稍後再試）。';
-      console.error(err);
-    }
-  });
-
-  // D) 總覽
-  function renderLatestGrid(db){
-    latestGrid.innerHTML = '';
-    if(db.items.length===0){ latestGrid.innerHTML='<div class="muted">尚未登記任何動畫。</div>'; return; }
-    const top9 = db.items.slice().sort((a,b)=> b.createdAt - a.createdAt).slice(0,9);
-    for(const a of top9){
-      const card = document.createElement('article');
-      card.className = 'card stack';
-      card.innerHTML = `
-        <img class="thumb" alt="${a.name}" src="${a.image || 'assets/hero.svg'}">
-        <div class="row" style="justify-content:space-between">
-          <strong class="ellipsis-1" title="${a.name}">${a.name}</strong>
-          ${badgeHTML(a)}
-        </div>
-      `;
-      latestGrid.appendChild(card);
-    }
-  }
-  function renderSearchResults(db, keyword){
-    searchResults.innerHTML=''; const list=db.items.slice(); const kw=(keyword||'').trim();
-    const results = !kw?[]: list.filter(a=> a.name.toLowerCase().includes(kw.toLowerCase()));
-    if(!kw) return;
-    if(results.length===0){ searchResults.innerHTML='<div class="muted">沒有符合的作品。</div>'; return; }
-    for(const a of results){
-      const card = document.createElement('article'); card.className='card stack';
-      card.innerHTML = `
-        <img class="thumb" alt="${a.name}" src="${a.image || 'assets/hero.svg'}">
-        <div class="row" style="justify-content:space-between">
-          <strong class="ellipsis-1" title="${a.name}">${a.name}</strong>
-          ${badgeHTML(a)}
-        </div>
-      `;
-      searchResults.appendChild(card);
-    }
-  }
-  searchInput.addEventListener('input', ()=> renderSearchResults(loadLocal(), searchInput.value));
-  searchClear.addEventListener('click', ()=>{ searchInput.value=''; renderSearchResults(loadLocal(), ''); });
-
-  // E) 匯出（單週 / 全部週次），含「速度評價」規則
-  function csvEscape(v){ const s=String(v??''); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
-  function compressToRanges(nums){
-    if(nums.length===0) return [];
-    const a=nums.slice().sort((x,y)=>x-y), out=[]; let start=a[0], prev=a[0];
-    for(let i=1;i<a.length;i++){ const cur=a[i]; if(cur===prev+1){ prev=cur; continue; }
-      out.push(start===prev?String(start):`${start}~${prev}`); start=prev=cur; }
-    out.push(start===prev?String(start):`${start}~${prev}`); return out;
-  }
-  function speedLabel(total){
-    if(total<=5) return '極慢';
-    if(total<=15) return '緩慢';
-    if(total<=30) return '中等';
-    if(total<=50) return '快速';
-    if(total<=70) return '極快';
-    if(total<=100) return '極限';
-    if(total<=200) return '混沌';
-    return '混沌';
-  }
-  function exportWeekCSV(weekStartISO){
-    const db = loadLocal();
-    const rows = [['動漫','集數','進度(第X集)','', `速度評價(0集)`]]; // E-1 的 Y 稍後覆蓋
-    const logs = db.logs.filter(l=> l.weekStartISO === weekStartISO);
-
-    const byAnime = new Map();
-    for(const l of logs){
-      const eps = byAnime.get(l.animeId) || new Set();
-      (l.eps||[]).forEach(x=> eps.add(x));
-      byAnime.set(l.animeId, eps);
-    }
-    let sum = 0;
-    for(const [animeId, epsSet] of byAnime.entries()){
-      const a = db.items.find(x=> x.id===animeId);
-      const eps = Array.from(epsSet).sort((x,y)=>x-y);
-      const ranges = compressToRanges(eps);
-      const count = eps.length;
-      rows.push([ a?.name ?? animeId, String(count), ranges.join(','), '', `（${count}集）` ]);
-      sum += count;
-    }
-    rows.push(['總計', String(sum)]); // A-n+2 / B-n+2
-
-    // 覆寫 E-1 的 Y = 這週總集數(B-n+2)，並在 E-2 放入評價
-    rows[0][4] = `速度評價(${sum}集)`; // E-1
-    if(rows.length>=3){
-      // E-2 寫本週總評
-      rows[1][4] = speedLabel(sum);
-    }
-
-    const csv = rows.map(r=> r.map(csvEscape).join(',')).join('\r\n');
-    const filename = `anime_watch_${formatWeekRangeFromISO(weekStartISO).replace(/[^\d~–]/g,'').replace('–','-')}.csv`;
-    downloadText(csv, filename);
-  }
-  function exportAllWeeksCSV(){
-    const db = loadLocal();
-    const weeks = Array.from(new Set(db.logs.map(l=> l.weekStartISO))).sort();
-    for(const w of weeks){ exportWeekCSV(w); }
-  }
-  function downloadText(text, filename){
-    const blob = new Blob([text], {type:'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-  }
-  exportWeekBtn.addEventListener('click', ()=> {
-    const weekStartISO = weekSelect.value || weekStartISOFromDate(new Date());
-    exportWeekCSV(weekStartISO);
-  });
-  exportAllBtn.addEventListener('click', ()=> exportAllWeeksCSV());
-
-  // ========== 啟動 ==========
-  renderWeekSelect();
-  await bootstrap();
-  refreshAll();
+    // 啟動
+    renderWeekSelect();
+    await bootstrap();
+    refresh();
   </script>
-  </body>
+  <script src="script.js" defer></script>
+</body>
 </html>
