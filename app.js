@@ -1,6 +1,6 @@
 // app.js — 共用邏輯（雲端同步 / 週次 / 匯出 / UI 工具）
 /*********** CONFIG ***********/
-export const API_URL = 'https://script.google.com/macros/s/AKfycbwn3uHYaGgRsGg2y0zV9SHpBkbhG9tP6OQtN_qD8gF7QXCyeBXsCxNrjzKDsGkoof5H/exec'; // ← 改成你的 Web App URL
+export const API_URL = 'https://script.google.com/macros/s/AKfycbyHc_6KQmrJ2BwHMX6P5aPT87WZ4EZCgoLq6qUvzZxTl7KDYAjhXVGa6vAaHkfvCCm-/exec'; // ← 改成你的 Web App URL
 const DB_KEY = 'animeDB_v2_cloud';
 /******************************/
 
