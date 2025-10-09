@@ -41,7 +41,6 @@ export async function cloudAddLog(animeId, weekStartISO, eps){
   if (!r.ok) throw new Error('addLog failed');
 }
 
-
 /** 啟動：若雲端可用，抓雲端覆蓋本機 */
 export async function bootstrap(){
   try{ if(cloudEnabled){ const data = await cloudGetAll(); saveLocal(data); } }
