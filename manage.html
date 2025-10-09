@@ -65,7 +65,7 @@
   <footer class="site-footer container">
     <small>&copy; <span id="year"></span> 動畫進度 · 由你打造 ✨</small>
   </footer>
-
+<!-- 使用新版模組 app.js，不需再載入 script.js -->
   <script type="module">
     import {
       API_URL, bootstrap, loadLocal, saveLocal, cloudEnabled,
@@ -175,6 +175,5 @@
     await bootstrap();
     render();
   </script>
-  <script src="script.js" defer></script>
 </body>
 </html>
