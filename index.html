@@ -62,7 +62,7 @@
             <span class="muted" id="episodes-hint">已看 0 / 總 0</span>
           </div>
 
-          <div class="row range-row" style="display:flex;gap:.75rem;align-items:center;margin-top:.4rem">
+          <div class="row" style="display:flex;gap:.75rem;align-items:center;margin-top:.4rem">
             <input id="range-start" type="number" min="1" step="1" placeholder="起始" style="width:6rem">
             <span>—</span>
             <input id="range-end" type="number" min="1" step="1" placeholder="結束" style="width:6rem">
@@ -81,9 +81,9 @@
 
   <script type="module">
     import {
-      API_URL, bootstrap, loadLocal, saveLocal, cloudEnabled,
-      cloudGetAll, cloudAddLog, weekStartISOFromDate, formatWeekRangeFromISO,
-      recentWeeks, autoUpdateWeekSelect, clamp, nextUnwatched, badgeHTML
+      bootstrap, loadLocal, saveLocal, cloudGetAll, cloudAddLog,
+      weekStartISOFromDate, formatWeekRangeFromISO, recentWeeks, autoUpdateWeekSelect,
+      clamp, nextUnwatched, badgeHTML
     } from './app.js';
 
     document.getElementById('year').textContent = new Date().getFullYear();
@@ -111,7 +111,7 @@
         weekSelect.add(opt);
       });
     }
-    autoUpdateWeekSelect(weekSelect); // 進頁/回到頁面都會更新週次選單
+    autoUpdateWeekSelect(weekSelect);
 
     function refresh(){
       const db = loadLocal();
@@ -144,8 +144,7 @@
         `;
         row.addEventListener('click', ()=>{
           currentAnimeId = a.id;
-          closeList();
-          updateBtn(a); renderEpisodesUI(loadLocal());
+          closeList(); updateBtn(a); renderEpisodesUI(loadLocal());
         });
         animeSelectList.appendChild(row);
       }
@@ -155,8 +154,7 @@
     function updateBtn(a){
       animeSelectBtn.querySelector('img').src = a.image || 'assets/hero.svg';
       animeSelectBtn.querySelector('.name').textContent = a.name;
-      const b = animeSelectBtn.querySelector('.badge');
-      b.textContent = `觀看 ${a.watched?.length||0} / ${a.episodes}`;
+      animeSelectBtn.querySelector('.badge').textContent = `觀看 ${a.watched?.length||0} / ${a.episodes}`;
       animeSelectBtn.setAttribute('aria-expanded','false');
     }
     function openList(){ animeSelectList.classList.remove('hidden'); animeSelectBtn.setAttribute('aria-expanded','true'); }
@@ -167,11 +165,7 @@
     function renderEpisodesUI(db){
       const a = db.items.find(x=> x.id===currentAnimeId);
       rangeMsg.textContent = '';
-      if(!a){
-        episodesHint.textContent = '已看 0 / 總 0';
-        rangeStart.value = ''; rangeEnd.value='';
-        return;
-      }
+      if(!a){ episodesHint.textContent='已看 0 / 總 0'; rangeStart.value=''; rangeEnd.value=''; return; }
       episodesHint.textContent = `已看 ${a.watched?.length||0} / 總 ${a.episodes}`;
       const next = nextUnwatched(a) ?? 1;
       rangeStart.min='1'; rangeStart.max=String(a.episodes);
@@ -193,7 +187,7 @@
       if(conflict.length){ rangeMsg.textContent=`已有紀錄：${conflict.map(n=>'Ep'+n).join(', ')}。請調整區間後再試。`; return; }
       if(add.length===0){ rangeMsg.textContent='此區間沒有可新增的集數。'; return; }
 
-      // 本機
+      // 本機寫入
       a.watched = Array.from(new Set([...(a.watched||[]), ...add])).sort((x,y)=>x-y);
       a.updatedAt = Date.now();
       const exist = (db.logs||[]).find(l=> l.animeId===a.id && l.weekStartISO===weekStartISO);
@@ -201,11 +195,10 @@
       else { db.logs.push({ animeId:a.id, weekStartISO, eps:add.slice().sort((x,y)=>x-y), createdAt:Date.now() }); }
       saveLocal(db);
 
-      // 雲端
+      // 雲端寫入
       try{
         await cloudAddLog(a.id, weekStartISO, add);
-        const latest = await cloudGetAll();
-        saveLocal(latest);
+        const latest = await cloudGetAll(); saveLocal(latest);
         rangeMsg.textContent = `已加入：${add.map(n=>'Ep'+n).join(', ')}（週次：${formatWeekRangeFromISO(weekStartISO)}）`;
         refresh();
       }catch(err){
@@ -214,7 +207,6 @@
       }
     });
 
-    // 啟動
     renderWeekSelect();
     await bootstrap();
     refresh();
