@@ -18,18 +18,29 @@ export const cloudEnabled = !!API_URL;
 export async function cloudGetAll(){
   const r = await fetch(API_URL+'?action=getAll'); if(!r.ok) throw new Error('getAll failed'); return r.json();
 }
+// app.js 內，替換這三個函式
+
 export async function cloudAddAnime(a){
-  const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'addAnime',data:a})});
-  if(!r.ok) throw new Error('addAnime failed');
+  const body = new URLSearchParams({ action: 'addAnime', data: JSON.stringify(a) });
+  const r = await fetch(API_URL, { method: 'POST', body });
+  if (!r.ok) throw new Error('addAnime failed');
 }
+
 export async function cloudDeleteAnime(id){
-  const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'deleteAnime',id})});
-  if(!r.ok) throw new Error('deleteAnime failed');
+  const body = new URLSearchParams({ action: 'deleteAnime', id });
+  const r = await fetch(API_URL, { method: 'POST', body });
+  if (!r.ok) throw new Error('deleteAnime failed');
 }
+
 export async function cloudAddLog(animeId, weekStartISO, eps){
-  const r = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'addLog',data:{animeId,weekStartISO,eps}})});
-  if(!r.ok) throw new Error('addLog failed');
+  const body = new URLSearchParams({
+    action: 'addLog',
+    data: JSON.stringify({ animeId, weekStartISO, eps })
+  });
+  const r = await fetch(API_URL, { method: 'POST', body });
+  if (!r.ok) throw new Error('addLog failed');
 }
+
 
 /** 啟動：若雲端可用，抓雲端覆蓋本機 */
 export async function bootstrap(){
