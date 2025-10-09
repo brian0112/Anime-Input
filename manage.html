@@ -65,11 +65,10 @@
   <footer class="site-footer container">
     <small>&copy; <span id="year"></span> 動畫進度 · 由你打造 ✨</small>
   </footer>
-<!-- 使用新版模組 app.js，不需再載入 script.js -->
+
   <script type="module">
     import {
-      API_URL, bootstrap, loadLocal, saveLocal, cloudEnabled,
-      cloudGetAll, cloudAddAnime, cloudDeleteAnime, uid, badgeHTML
+      bootstrap, loadLocal, saveLocal, cloudGetAll, cloudAddAnime, cloudDeleteAnime, uid, badgeHTML
     } from './app.js';
 
     document.getElementById('year').textContent = new Date().getFullYear();
@@ -85,18 +84,12 @@
     const createMsg     = document.getElementById('create-msg');
     const manageList    = document.getElementById('manage-list');
 
-    function fileToDataURL(file){
-      return new Promise((res,rej)=>{
-        const r = new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file);
-      });
-    }
+    function fileToDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
 
     function render(){
       const db = loadLocal();
       manageList.innerHTML = '';
-      if(db.items.length===0){
-        manageList.innerHTML = '<div class="muted">尚未登記任何動畫。</div>'; return;
-      }
+      if(db.items.length===0){ manageList.innerHTML = '<div class="muted">尚未登記任何動畫。</div>'; return; }
       const items = db.items.slice().sort((a,b)=> a.name.localeCompare(b.name,'zh-Hant'));
       for(const a of items){
         const card = document.createElement('article');
@@ -129,12 +122,10 @@
           saveLocal(db2);
           try{
             await cloudDeleteAnime(a.id);
-            const latest = await cloudGetAll();
-            saveLocal(latest);
+            const latest = await cloudGetAll(); saveLocal(latest);
             render();
           }catch(err){
-            alert('雲端刪除失敗，但本機已刪除。請稍後再同步。');
-            console.error(err); render();
+            alert('雲端刪除失敗，但本機已刪除。請稍後再同步。'); console.error(err); render();
           }
         });
         manageList.appendChild(card);
@@ -145,7 +136,6 @@
     createCancel.addEventListener('click', ()=> createDialog.close());
     createDialog.addEventListener('cancel', (e)=>{ e.preventDefault(); createDialog.close(); });
 
-    // ✅ 修正：儲存按鈕一定送出（先本機、再雲端，成功後關閉與刷新）
     createSubmit.addEventListener('click', async ()=>{
       createMsg.textContent = '';
       const name = createName.value.trim();
@@ -155,7 +145,6 @@
       const episodes = Math.max(1, parseInt(epsStr,10));
       let imageData = null; const file = createImage.files?.[0]; if(file){ imageData = await fileToDataURL(file); }
 
-      // 本機
       const db = loadLocal();
       if(db.items.some(x=> x.name===name)){ createMsg.textContent='此名稱已存在，若要重新上傳請先刪除舊資料。'; return; }
       const id = uid();
