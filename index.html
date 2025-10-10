@@ -1,35 +1,42 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>動畫進度</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div data-include="header.html"></div>
-  <main>
-    <p>歡迎使用「動畫進度」系統，請選擇上方頁面操作。</p>
+
+  <main class="container">
+    <section class="section">
+      <h2>歡迎使用「動畫進度」系統</h2>
+      <p class="muted">請使用上方導覽列前往「動畫登記」新增作品，或到「動畫紀錄」輸入每週觀看進度。</p>
+      <div class="row">
+        <a class="btn primary" href="manage.html">前往動畫登記</a>
+        <a class="btn" href="dashboard.html">前往動畫紀錄</a>
+        <a class="btn" href="overview.html">瀏覽觀看總覽</a>
+      </div>
+    </section>
   </main>
 
-  <footer>
+  <footer class="site-footer container">
     <small>© 動畫進度 · 由你打造 ✨</small>
   </footer>
+
+  <!-- 載入共用 header -->
   <script>
-  // 自動載入共用 header（含 cache-busting）
-  (function loadSharedPart(){
-    const ts = (window.__BUILD_TS || Date.now()); // 版本號/時間戳
-    document.querySelectorAll('[data-include]').forEach(el=>{
-      const file = el.getAttribute('data-include');
-      const url = file + '?v=' + ts;
-      fetch(url).then(r=>r.text()).then(html=>{
-        el.innerHTML = html;
-        // 載入完成後（header 已插入 DOM），呼叫全域初始化（若有）
-        if (window.setupHeader) window.setupHeader();
-      }).catch(err=>{
-        console.error('無法載入共用檔案：', file, err);
+    (function loadSharedPart(){
+      const ts = (window.__BUILD_TS || Date.now());
+      document.querySelectorAll('[data-include]').forEach(el=>{
+        const file = el.getAttribute('data-include');
+        fetch(file + '?v=' + ts).then(r=>r.text()).then(html=>{
+          el.innerHTML = html;
+          if (window.setupHeader) window.setupHeader();
+        });
       });
-    });
-  })();
-</script>
+    })();
+  </script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
