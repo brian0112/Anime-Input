@@ -1,6 +1,7 @@
 // app.js — 共用邏輯（雲端同步 / 週次 / 匯出 / UI 工具）
 /*********** CONFIG ***********/
 export const API_URL = 'https://script.google.com/macros/s/AKfycbyHc_6KQmrJ2BwHMX6P5aPT87WZ4EZCgoLq6qUvzZxTl7KDYAjhXVGa6vAaHkfvCCm-/exec'; // ← 改成你的 Web App URL
+export const API_TOKEN = 'Saray0112-Key'; // ← 新增這行！必須與 code.gs 的 MY_TOKEN 相同
 const DB_KEY = 'animeDB_v2_cloud';
 /******************************/
 
@@ -16,18 +17,25 @@ export const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 /* 後端（Apps Script）API */
 export const cloudEnabled = !!API_URL;
 export async function cloudGetAll(){
-  const r = await fetch(API_URL+'?action=getAll'); if(!r.ok) throw new Error('getAll failed'); return r.json();
+  const r = await fetch(`${API_URL}?action=getAll&token=${API_TOKEN}`);  // ← 改這行：加上 token 參數
+  if(!r.ok) throw new Error('getAll failed');
+  return r.json();
 }
+
 // app.js 內，替換這三個函式
 
 export async function cloudAddAnime(a){
-  const body = new URLSearchParams({ action: 'addAnime', data: JSON.stringify(a) });
+  const body = new URLSearchParams({ 
+    action: 'addAnime', 
+    data: JSON.stringify(a), 
+    token: API_TOKEN
+  });
   const r = await fetch(API_URL, { method: 'POST', body });
   if (!r.ok) throw new Error('addAnime failed');
 }
 
 export async function cloudDeleteAnime(id){
-  const body = new URLSearchParams({ action: 'deleteAnime', id });
+  const body = new URLSearchParams({ action: 'deleteAnime', id, token: API_TOKEN });
   const r = await fetch(API_URL, { method: 'POST', body });
   if (!r.ok) throw new Error('deleteAnime failed');
 }
@@ -35,12 +43,17 @@ export async function cloudDeleteAnime(id){
 export async function cloudAddLog(animeId, weekStartISO, eps){
   const body = new URLSearchParams({
     action: 'addLog',
-    data: JSON.stringify({ animeId, weekStartISO, eps })
+    data: JSON.stringify({ animeId, weekStartISO, eps }),
+    token: API_TOKEN
   });
   const r = await fetch(API_URL, { method: 'POST', body });
   if (!r.ok) throw new Error('addLog failed');
 }
 
+export async function cloudGetAll(){
+  const r = await fetch(`${API_URL}?action=getAll&token=${API_TOKEN}`);
+  return r.json();
+}
 /** 啟動：若雲端可用，抓雲端覆蓋本機 */
 export async function bootstrap(){
   try{ if(cloudEnabled){ const data = await cloudGetAll(); saveLocal(data); } }
