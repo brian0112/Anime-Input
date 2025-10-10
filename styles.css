@@ -70,3 +70,25 @@ input:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:2px}
   .hero-illustration{justify-self:center}
   .grid{grid-template-columns:1fr}
 }
+/* ==== overview.html 需要的小工具 ==== */
+.muted{ color: var(--muted); }
+
+/* 橫向排版的工具列 */
+.row{ display:flex; gap:.75rem; align-items:center; flex-wrap:wrap; }
+
+/* 圖片 16:9 縮圖 */
+.thumb{ width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:.8rem; background:#000; }
+
+/* 徽章（亮色） */
+.badge{
+  display:inline-block; padding:.2rem .55rem; border-radius:.5rem;
+  border:1px solid var(--border); font-size:.85rem;
+}
+.badge.complete{ border-color:var(--brand); box-shadow:0 0 0 1px inset var(--brand); }
+
+/* 讓 select / search 跟你的輸入框一致 */
+select, input[type="search"]{
+  background:transparent; border:1px solid var(--border); border-radius:.7rem;
+  padding:.6rem .8rem; color:var(--text);
+}
+select:focus, input[type="search"]:focus{ outline:2px solid var(--brand); outline-offset:2px; }
