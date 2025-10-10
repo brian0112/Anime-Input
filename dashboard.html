@@ -1,175 +1,43 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>觀看總覽 / 搜尋 / 匯出</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css" />
-  <style>
-    .tabs{display:flex;gap:.5rem;flex-wrap:wrap}
-    .pill{border:1px solid var(--border);padding:.25rem .6rem;border-radius:999px;color:var(--muted);text-decoration:none}
-    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
-    @media (max-width: 1024px){ .grid-3{grid-template-columns:1fr} }
-    .thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:.75rem;border:1px solid var(--border)}
-    .badge{font-size:.8rem;padding:.2rem .5rem;border-radius:.5rem;border:1px solid var(--border)}
-    .badge.complete{background:var(--brand);color:var(--brand-ink);border-color:transparent;font-weight:700}
-  </style>
+  <meta charset="UTF-8">
+  <title>動畫紀錄</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="site-header container">
-    <a class="brand" href="index.html" aria-label="首頁">🎞️ 動畫進度</a>
-    <nav class="nav tabs" aria-label="主選單">
-      <a class="pill" href="index.html">動畫紀錄</a>
-      <a class="pill" href="manage.html">動畫登記</a>
-      <a class="pill" href="dashboard.html">觀看總覽</a>
-      <button id="themeToggle" class="btn outline" aria-pressed="false" aria-label="切換深淺色" style="margin-left:auto">主題</button>
+  <header>
+    <h1>動畫紀錄</h1>
+    <nav>
+      <a href="index.html">首頁</a>
+      <a href="manage.html">動畫登記</a>
+      <a href="overview.html">觀看總覽</a>
     </nav>
   </header>
 
-  <main class="container section">
-    <h2>觀看總覽 / 搜尋 / 匯出</h2>
-
-    <div class="row" style="display:flex;gap:.5rem;flex-wrap:wrap">
-      <button id="export-csv-week" class="btn outline">匯出本週（CSV）</button>
-      <button id="export-csv-all" class="btn outline">匯出全部週次（多檔 CSV）</button>
-    </div>
-
-    <div class="section">
-      <h3>最新登記的 9 部作品</h3>
-      <div id="latest-grid" class="grid-3"></div>
-    </div>
-
-    <div class="section card">
-      <h3>搜尋其他作品</h3>
-      <div class="row" style="display:flex;gap:.5rem">
-        <input id="search-input" type="search" placeholder="輸入關鍵字..." />
-        <button id="search-clear" class="btn">清除</button>
-      </div>
-      <div id="search-results" class="grid-3" style="margin-top:1rem"></div>
-    </div>
+  <main>
+    <section id="animeList"></section>
   </main>
 
-  <footer class="site-footer container">
-    <small>&copy; <span id="year"></span> 動畫進度 · 由你打造 ✨</small>
+  <footer>
+    <small>© 動畫進度</small>
   </footer>
 
   <script type="module">
-    import {
-      bootstrap, loadLocal, saveLocal, cloudGetAll,
-      badgeHTML, csvEscape, compressToRanges, formatWeekRangeFromISO, downloadText
-    } from './app.js';
-
-    document.getElementById('year').textContent = new Date().getFullYear();
-
-    const latestGrid    = document.getElementById('latest-grid');
-    const searchInput   = document.getElementById('search-input');
-    const searchClear   = document.getElementById('search-clear');
-    const searchResults = document.getElementById('search-results');
-    const exportWeekBtn = document.getElementById('export-csv-week');
-    const exportAllBtn  = document.getElementById('export-csv-all');
-
-    function render(){
-      const db = loadLocal();
-      renderLatest(db);
-      renderSearch(db, searchInput.value?.trim()||'');
+    import { loadLocal, badgeHTML } from './app.js';
+    const container = document.getElementById('animeList');
+    const db = loadLocal();
+    if (!db.items.length) {
+      container.innerHTML = '<p>尚未登記任何動畫。</p>';
+    } else {
+      container.innerHTML = db.items.map(a => `
+        <div class="anime-item">
+          <img src="${a.image}" alt="${a.name}">
+          <h3>${a.name}</h3>
+          ${badgeHTML(a)}
+        </div>
+      `).join('');
     }
-
-    function renderLatest(db){
-      latestGrid.innerHTML='';
-      if(db.items.length===0){ latestGrid.innerHTML='<div class="muted">尚未登記任何動畫。</div>'; return; }
-      const top9 = db.items.slice().sort((a,b)=> b.createdAt - a.createdAt).slice(0,9);
-      for(const a of top9){
-        const el = document.createElement('article');
-        el.className = 'card';
-        el.style.display='grid'; el.style.gap='.5rem';
-        el.innerHTML = `
-          <img class="thumb" alt="${a.name}" src="${a.image || 'assets/hero.svg'}">
-          <div class="row" style="display:flex;justify-content:space-between;align-items:center">
-            <strong style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${a.name}">${a.name}</strong>
-            ${badgeHTML(a)}
-          </div>
-        `;
-        latestGrid.appendChild(el);
-      }
-    }
-
-    function renderSearch(db, kw){
-      searchResults.innerHTML='';
-      if(!kw) return;
-      const list = db.items.slice().filter(a => a.name.toLowerCase().includes(kw.toLowerCase()));
-      if(list.length===0){ searchResults.innerHTML='<div class="muted">沒有符合的作品。</div>'; return; }
-      for(const a of list){
-        const el = document.createElement('article'); el.className='card'; el.style.display='grid'; el.style.gap='.5rem';
-        el.innerHTML = `
-          <img class="thumb" alt="${a.name}" src="${a.image || 'assets/hero.svg'}">
-          <div class="row" style="display:flex;justify-content:space-between;align-items:center">
-            <strong style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${a.name}">${a.name}</strong>
-            ${badgeHTML(a)}
-          </div>
-        `;
-        searchResults.appendChild(el);
-      }
-    }
-    searchInput.addEventListener('input', ()=> renderSearch(loadLocal(), searchInput.value));
-    searchClear.addEventListener('click', ()=>{ searchInput.value=''; renderSearch(loadLocal(), ''); });
-
-    // 速度評價
-    function speedLabel(total){
-      if(total<=5) return '極慢';
-      if(total<=15) return '緩慢';
-      if(total<=30) return '中等';
-      if(total<=50) return '快速';
-      if(total<=70) return '極快';
-      if(total<=100) return '極限';
-      if(total<=200) return '混沌';
-      return '混沌';
-    }
-
-    function exportWeekCSV(weekStartISO){
-      const db = loadLocal();
-      const rows = [['動漫','集數','進度(第X集)','', '速度評價(0集)']]; // E-1 的 Y 會改成總集數
-      const logs = db.logs.filter(l => l.weekStartISO === weekStartISO);
-
-      const byAnime = new Map();
-      for(const l of logs){
-        const eps = byAnime.get(l.animeId) || new Set();
-        (l.eps||[]).forEach(x=> eps.add(x));
-        byAnime.set(l.animeId, eps);
-      }
-      let sum = 0;
-      for(const [animeId, epsSet] of byAnime.entries()){
-        const a = db.items.find(x=> x.id===animeId);
-        const eps = Array.from(epsSet).sort((x,y)=>x-y);
-        const ranges = compressToRanges(eps);
-        const count = eps.length;
-        rows.push([ a?.name ?? animeId, String(count), ranges.join(','), '', `（${count}集）` ]);
-        sum += count;
-      }
-      rows.push(['總計', String(sum)]);
-      rows[0][4] = `速度評價(${sum}集)`;
-      if(rows.length>=3){ rows[1][4] = speedLabel(sum); }
-
-      const csv = rows.map(r=> r.map(csvEscape).join(',')).join('\r\n');
-      const filename = `anime_watch_${formatWeekRangeFromISO(weekStartISO).replace(/[^\d~–]/g,'').replace('–','-')}.csv`;
-      downloadText(csv, filename);
-    }
-    function exportAllWeeksCSV(){
-      const db = loadLocal();
-      const weeks = Array.from(new Set(db.logs.map(l=> l.weekStartISO))).sort();
-      for(const w of weeks){ exportWeekCSV(w); }
-    }
-
-    exportWeekBtn.addEventListener('click', ()=>{
-      const weeks = Array.from(new Set(loadLocal().logs.map(l=> l.weekStartISO))).sort();
-      const last = weeks[weeks.length-1] || new Date().toISOString();
-      exportWeekCSV(last);
-    });
-    exportAllBtn.addEventListener('click', ()=> exportAllWeeksCSV());
-
-    await bootstrap();
-    try{ const latest = await cloudGetAll(); saveLocal(latest); }catch(_){}
-    render();
   </script>
 </body>
 </html>
