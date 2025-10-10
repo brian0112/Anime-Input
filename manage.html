@@ -1,168 +1,101 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>動畫登記 / 管理</title>
-  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css" />
-  <style>
-    .tabs{display:flex;gap:.5rem;flex-wrap:wrap}
-    .pill{border:1px solid var(--border);padding:.25rem .6rem;border-radius:999px;color:var(--muted);text-decoration:none}
-    :root{ --danger:#ef4444; --danger-ink:#ffffff; }
-    .manage-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
-    .manage-card{display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;border:1px solid var(--border);background:var(--panel);border-radius:1rem;padding:1rem;position:relative}
-    .thumb{aspect-ratio:16/9;width:100%;object-fit:cover;border-radius:.75rem;border:1px solid var(--border)}
-    .right{display:grid;gap:.5rem;padding-right:2.4rem}
-    .title-row{display:flex;justify-content:space-between;gap:.75rem;align-items:flex-start}
-    .badge{font-size:.8rem;padding:.2rem .5rem;border-radius:.5rem;border:1px solid var(--border)}
-    .badge.complete{background:var(--brand);color:var(--brand-ink);border-color:transparent;font-weight:700}
-    .icon-btn{position:absolute;top:.6rem;right:.6rem;border:1px solid transparent;background:var(--danger);color:var(--danger-ink);border-radius:.6rem;padding:.45rem;cursor:pointer;z-index:2;box-shadow:0 4px 14px rgba(239,68,68,.35)}
-    .icon-btn:hover{filter:brightness(1.1)}
-    .icon-trash{width:18px;height:18px;display:block}
-    @media (max-width: 1024px){ .manage-grid{grid-template-columns:1fr} }
-  </style>
+  <meta charset="UTF-8">
+  <title>動畫登記</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="site-header container">
-    <a class="brand" href="index.html" aria-label="首頁">🎞️ 動畫進度</a>
-    <nav class="nav tabs" aria-label="主選單">
-      <a class="pill" href="index.html">動畫紀錄</a>
-      <a class="pill" href="manage.html">動畫登記</a>
-      <a class="pill" href="dashboard.html">觀看總覽</a>
-      <button id="themeToggle" class="btn outline" aria-pressed="false" aria-label="切換深淺色" style="margin-left:auto">主題</button>
+  <header>
+    <h1>動畫登記 / 管理</h1>
+    <nav>
+      <a href="dashboard.html">動畫紀錄</a>
+      <a href="manage.html" class="active">動畫登記</a>
+      <a href="overview.html">觀看總覽</a>
     </nav>
   </header>
 
-  <main class="container section">
-    <h2>動畫登記 / 管理</h2>
-
-    <div class="row" style="display:flex;gap:.75rem;align-items:center">
-      <button id="open-create" class="btn primary">新增動畫</button>
-      <span class="muted">新增後會出現在「動畫紀錄」與「觀看總覽」。</span>
-    </div>
-
-    <div class="section card" style="display:grid;gap:1rem;margin-top:1rem">
-      <h3>已登記動畫</h3>
-      <div id="manage-list" class="manage-grid"></div>
-    </div>
+  <main>
+    <button id="open-create">➕ 新增動畫</button>
+    <div id="list"></div>
 
     <dialog id="create-dialog">
-      <form class="stack" id="create-form" method="dialog" style="display:grid;gap:.8rem;max-width:560px">
+      <form method="dialog">
         <h3>新增動畫</h3>
-        <label>動畫圖片（選填）<input id="create-image" type="file" accept="image/*"></label>
-        <label>動畫名稱<input id="create-name" type="text" placeholder="例如：星際漂流記" required></label>
-        <label>動畫集數<input id="create-episodes" inputmode="numeric" pattern="[0-9]*" placeholder="例如：12" required></label>
-        <div class="row" style="display:flex;gap:.75rem;align-items:center">
-          <button class="btn primary" id="create-submit" type="button">儲存</button>
-          <button class="btn" id="create-cancel" type="button">取消</button>
-          <span id="create-msg" class="muted" aria-live="polite"></span>
-        </div>
+        <input id="anime-name" placeholder="名稱" required>
+        <input id="anime-episodes" type="number" placeholder="集數" required>
+        <input id="anime-image" placeholder="封面圖片URL">
+        <menu>
+          <button value="cancel">取消</button>
+          <button id="btn-save">儲存</button>
+        </menu>
       </form>
     </dialog>
   </main>
 
-  <footer class="site-footer container">
-    <small>&copy; <span id="year"></span> 動畫進度 · 由你打造 ✨</small>
+  <footer>
+    <small>© 動畫進度 · 由你打造 ✨</small>
   </footer>
 
   <script type="module">
-    import {
-      bootstrap, loadLocal, saveLocal, cloudGetAll, cloudAddAnime, cloudDeleteAnime, uid, badgeHTML
-    } from './app.js';
+    import { uid, loadLocal, saveLocal, cloudAddAnime, cloudDeleteAnime, cloudGetAll } from './app.js';
 
-    document.getElementById('year').textContent = new Date().getFullYear();
+    const list = document.getElementById('list');
+    const dialog = document.getElementById('create-dialog');
+    const btnOpen = document.getElementById('open-create');
+    const btnSave = document.getElementById('btn-save');
 
-    const openCreateBtn = document.getElementById('open-create');
-    const createDialog  = document.getElementById('create-dialog');
-    const createForm    = document.getElementById('create-form');
-    const createImage   = document.getElementById('create-image');
-    const createName    = document.getElementById('create-name');
-    const createEps     = document.getElementById('create-episodes');
-    const createSubmit  = document.getElementById('create-submit');
-    const createCancel  = document.getElementById('create-cancel');
-    const createMsg     = document.getElementById('create-msg');
-    const manageList    = document.getElementById('manage-list');
+    btnOpen.addEventListener('click', () => dialog.showModal());
+    btnSave.addEventListener('click', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('anime-name').value.trim();
+      const episodes = Number(document.getElementById('anime-episodes').value);
+      const image = document.getElementById('anime-image').value.trim();
 
-    function fileToDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+      if (!name || !episodes) return alert('請輸入完整資料');
 
-    function render(){
-      const db = loadLocal();
-      manageList.innerHTML = '';
-      if(db.items.length===0){ manageList.innerHTML = '<div class="muted">尚未登記任何動畫。</div>'; return; }
-      const items = db.items.slice().sort((a,b)=> a.name.localeCompare(b.name,'zh-Hant'));
-      for(const a of items){
-        const card = document.createElement('article');
-        card.className = 'manage-card';
-        card.innerHTML = `
-          <img class="thumb" alt="${a.name}" src="${a.image || 'assets/hero.svg'}">
-          <div class="right">
-            <div class="title-row">
-              <strong style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${a.name}">${a.name}</strong>
-              ${badgeHTML(a)}
-            </div>
-            <small class="muted">共 ${a.episodes} 集 · 已看 ${a.watched?.length||0} 集</small>
-          </div>
-          <button class="icon-btn" title="刪除" aria-label="刪除">
-            <svg class="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-              <path d="M10 11v6"></path>
-              <path d="M14 11v6"></path>
-              <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path>
-            </svg>
-          </button>
-        `;
-        card.querySelector('.icon-btn').addEventListener('click', async ()=>{
-          if(!confirm(`確定要刪除「${a.name}」嗎？此動作無法復原。`)) return;
-          const db2 = loadLocal();
-          const idx = db2.items.findIndex(x=>x.id===a.id);
-          if(idx>-1) db2.items.splice(idx,1);
-          db2.logs = (db2.logs||[]).filter(l=> l.animeId!==a.id);
-          saveLocal(db2);
-          try{
-            await cloudDeleteAnime(a.id);
-            const latest = await cloudGetAll(); saveLocal(latest);
-            render();
-          }catch(err){
-            alert('雲端刪除失敗，但本機已刪除。請稍後再同步。'); console.error(err); render();
-          }
-        });
-        manageList.appendChild(card);
-      }
-    }
+      const a = { id: uid(), name, episodes, image, createdAt: Date.now(), updatedAt: Date.now() };
 
-    openCreateBtn.addEventListener('click', ()=>{ createForm.reset(); createMsg.textContent=''; createDialog.showModal(); });
-    createCancel.addEventListener('click', ()=> createDialog.close());
-    createDialog.addEventListener('cancel', (e)=>{ e.preventDefault(); createDialog.close(); });
-
-    createSubmit.addEventListener('click', async ()=>{
-      createMsg.textContent = '';
-      const name = createName.value.trim();
-      const epsStr = createEps.value.trim();
-      if(!name){ createMsg.textContent='請輸入名稱'; return; }
-      if(!/^[0-9]+$/.test(epsStr)){ createMsg.textContent='集數僅能輸入數字'; return; }
-      const episodes = Math.max(1, parseInt(epsStr,10));
-      let imageData = null; const file = createImage.files?.[0]; if(file){ imageData = await fileToDataURL(file); }
-
-      const db = loadLocal();
-      if(db.items.some(x=> x.name===name)){ createMsg.textContent='此名稱已存在，若要重新上傳請先刪除舊資料。'; return; }
-      const id = uid();
-      db.items.push({ id, name, episodes, image:imageData||undefined, createdAt:Date.now(), updatedAt:Date.now(), watched:[] });
-      saveLocal(db);
-
-      try{
-        await cloudAddAnime({ id, name, episodes, image:imageData||'', createdAt:Date.now(), updatedAt:Date.now() });
-        const latest = await cloudGetAll(); saveLocal(latest);
-        createDialog.close(); render();
-      }catch(err){
-        createMsg.textContent = '雲端同步失敗，但本機已新增（可稍後再試）。';
+      try {
+        await cloudAddAnime(a);
+        const db = loadLocal();
+        db.items.push(a);
+        saveLocal(db);
+        alert('✅ 新增成功');
+        dialog.close();
+        renderList();
+      } catch (err) {
         console.error(err);
+        alert('❌ 雲端同步失敗');
       }
     });
 
-    await bootstrap();
-    render();
+    async function renderList() {
+      const db = loadLocal();
+      if (!db.items.length) {
+        list.innerHTML = '<p>目前沒有登記的動畫。</p>';
+      } else {
+        list.innerHTML = db.items.map(a => `
+          <div class="anime-row">
+            <img src="${a.image}" alt="">
+            <span>${a.name}（${a.episodes}集）</span>
+            <button data-id="${a.id}" class="del">刪除</button>
+          </div>
+        `).join('');
+
+        list.querySelectorAll('.del').forEach(btn => btn.addEventListener('click', async (ev) => {
+          const id = ev.target.dataset.id;
+          if (!confirm('確定要刪除此動畫嗎？')) return;
+          await cloudDeleteAnime(id);
+          const db = loadLocal();
+          db.items = db.items.filter(x => x.id !== id);
+          saveLocal(db);
+          renderList();
+        }));
+      }
+    }
+
+    renderList();
   </script>
 </body>
 </html>
