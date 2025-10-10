@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
@@ -7,46 +7,57 @@
 </head>
 <body>
   <div data-include="header.html"></div>
-  <main>
-    <section id="animeList"></section>
+
+  <main class="container">
+    <section class="section">
+      <h2>已登記動畫</h2>
+      <div id="list" class="grid"></div>
+      <p id="empty" class="muted" style="display:none">尚未登記任何動畫。</p>
+    </section>
   </main>
 
-  <footer>
-    <small>© 動畫進度</small>
+  <footer class="site-footer container">
+    <small>© 動畫進度 · 由你打造 ✨</small>
   </footer>
 
+  <!-- 載入共用 header -->
+  <script>
+    (function loadSharedPart(){
+      const ts = (window.__BUILD_TS || Date.now());
+      document.querySelectorAll('[data-include]').forEach(el=>{
+        const file = el.getAttribute('data-include');
+        fetch(file + '?v=' + ts).then(r=>r.text()).then(html=>{
+          el.innerHTML = html;
+          if (window.setupHeader) window.setupHeader();
+        });
+      });
+    })();
+  </script>
+
   <script type="module">
-    import { loadLocal, badgeHTML } from './app.js';
-    const container = document.getElementById('animeList');
-    const db = loadLocal();
-    if (!db.items.length) {
-      container.innerHTML = '<p>尚未登記任何動畫。</p>';
-    } else {
-      container.innerHTML = db.items.map(a => `
-        <div class="anime-item">
-          <img src="${a.image}" alt="${a.name}">
-          <h3>${a.name}</h3>
+    import { loadLocal, cloudGetAll, saveLocal, badgeHTML } from './app.js';
+
+    const list = document.getElementById('list');
+    const empty = document.getElementById('empty');
+
+    function render(db){
+      if(!db.items.length){ empty.style.display='block'; list.innerHTML=''; return; }
+      empty.style.display='none';
+      const items = [...db.items].sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
+      list.innerHTML = items.map(a => `
+        <article class="card">
+          <img class="thumb" src="${a.image||'assets/hero.svg'}" alt="${a.name}">
+          <h3 style="margin:.6rem 0 .25rem">${a.name}</h3>
           ${badgeHTML(a)}
-        </div>
+        </article>
       `).join('');
     }
+
+    async function init(){
+      try { const cloud = await cloudGetAll(); saveLocal(cloud); render(cloud); }
+      catch { render(loadLocal()); }
+    }
+    init();
   </script>
-<script>
-  // 自動載入共用 header（含 cache-busting）
-  (function loadSharedPart(){
-    const ts = (window.__BUILD_TS || Date.now()); // 版本號/時間戳
-    document.querySelectorAll('[data-include]').forEach(el=>{
-      const file = el.getAttribute('data-include');
-      const url = file + '?v=' + ts;
-      fetch(url).then(r=>r.text()).then(html=>{
-        el.innerHTML = html;
-        // 載入完成後（header 已插入 DOM），呼叫全域初始化（若有）
-        if (window.setupHeader) window.setupHeader();
-      }).catch(err=>{
-        console.error('無法載入共用檔案：', file, err);
-      });
-    });
-  })();
-</script>
 </body>
 </html>
