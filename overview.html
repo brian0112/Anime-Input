@@ -1,43 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>觀看總覽</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- 頂部導覽 -->
   <div data-include="header.html"></div>
 
   <main class="container">
-    <!-- 匯出 / 週次 / 同步 -->
     <section class="section">
       <div class="row">
         <label style="margin:0">
           <span class="muted">選擇週次</span>
-          <select id="week-select"></select>
+          <select id="week"></select>
         </label>
-        <button id="btn-export-week" class="btn">匯出此週 CSV</button>
-        <button id="btn-export-all" class="btn">全部週次各自一張 CSV</button>
-        <button id="btn-refresh" class="btn primary">雲端重新整理</button>
+        <button id="expWeek" class="btn">匯出此週 CSV</button>
+        <button id="expAll" class="btn">全部週次各自一張 CSV</button>
+        <button id="refresh" class="btn primary">雲端重新整理</button>
         <span id="hint" class="muted"></span>
       </div>
     </section>
 
-    <!-- 最新 9 部 -->
     <section class="section">
       <h2>最新登記的 9 部作品</h2>
-      <div id="latest-grid" class="grid"></div>
+      <div id="latest" class="grid"></div>
     </section>
 
-    <!-- 搜尋 -->
     <section class="section">
       <div class="row" style="justify-content:space-between">
         <h2 style="margin:0">搜尋</h2>
-        <input id="q" type="search" placeholder="輸入動畫名稱…" />
+        <input id="q" type="search" placeholder="輸入動畫名稱…">
       </div>
-      <div id="search-grid" class="grid" style="margin-top:1rem"></div>
+      <div id="result" class="grid" style="margin-top:1rem"></div>
     </section>
   </main>
 
@@ -45,29 +41,62 @@
     <small>© 動畫進度 · 由你打造 ✨</small>
   </footer>
 
-  <script type="module">
-    import { cloudGetAll, loadLocal, saveLocal, badgeHTML } from './app.js';
+  <!-- 載入共用 header -->
+  <script>
+    (function loadSharedPart(){
+      const ts = (window.__BUILD_TS || Date.now());
+      document.querySelectorAll('[data-include]').forEach(el=>{
+        const file = el.getAttribute('data-include');
+        fetch(file + '?v=' + ts).then(r=>r.text()).then(html=>{
+          el.innerHTML = html;
+          if (window.setupHeader) window.setupHeader();
+        });
+      });
+    })();
+  </script>
 
-    // ---------- 小工具 ----------
-    const pad = n => String(n).padStart(2,'0');
-    function mondayOf(d=new Date()){ const x=new Date(d); const w=x.getDay()||7; if(w!==1)x.setDate(x.getDate()-(w-1)); x.setHours(0,0,0,0); return x; }
-    function isoDate(d){ return d.toISOString().slice(0,10); }
-    function weekLabelFromISO(iso){
-      const s = new Date(iso); const e = new Date(s); e.setDate(e.getDate()+6);
-      return `${s.getMonth()+1}/${pad(s.getDate())} ~ ${e.getMonth()+1}/${pad(e.getDate())}`;
+  <script type="module">
+    import { cloudGetAll, loadLocal, saveLocal, recentWeekStarts, weekLabelFromISO, badgeHTML, downloadCSV, compressRanges } from './app.js';
+
+    const weekSel = document.getElementById('week');
+    const latest  = document.getElementById('latest');
+    const result  = document.getElementById('result');
+    const q       = document.getElementById('q');
+    const hint    = document.getElementById('hint');
+
+    function fillWeeks(){
+      weekSel.innerHTML='';
+      recentWeekStarts(12).forEach((iso,i)=>{
+        const o=document.createElement('option');
+        o.value=iso; o.textContent=`${weekLabelFromISO(iso)}（週一~週日）`;
+        if(i===0) o.selected=true;
+        weekSel.appendChild(o);
+      });
     }
-    function lastNWeekStarts(n=12){
-      const out=[]; const base=mondayOf();
-      for(let i=0;i<n;i++){ const d=new Date(base); d.setDate(base.getDate()-i*7); out.push(isoDate(d)); }
-      return out;
+
+    function renderLatest(db){
+      const items = [...db.items].sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0)).slice(0,9);
+      latest.innerHTML = items.map(a=>`
+        <article class="card">
+          <img class="thumb" src="${a.image||'assets/hero.svg'}" alt="${a.name}">
+          <h3 style="margin:.6rem 0 .25rem">${a.name}</h3>
+          ${badgeHTML(a)}
+        </article>
+      `).join('') || '<p class="muted">尚未登記動畫。</p>';
     }
-    function compressRanges(nums){
-      if(!nums?.length) return [];
-      const a=[...new Set(nums)].sort((x,y)=>x-y);
-      const out=[]; let s=a[0],p=a[0];
-      for(let i=1;i<a.length;i++){ if(a[i]===p+1){p=a[i];continue;} out.push(s===p?`${s}`:`${s}~${p}`); s=p=a[i]; }
-      out.push(s===p?`${s}`:`${s}~${p}`); return out;
+
+    function renderSearch(db, kw=''){
+      kw=kw.trim().toLowerCase();
+      const items = kw ? db.items.filter(a=>a.name.toLowerCase().includes(kw)) : [];
+      result.innerHTML = items.map(a=>`
+        <article class="card">
+          <img class="thumb" src="${a.image||'assets/hero.svg'}" alt="${a.name}">
+          <h3 style="margin:.6rem 0 .25rem">${a.name}</h3>
+          ${badgeHTML(a)}
+        </article>
+      `).join('') || (kw?'<p class="muted">沒有符合的作品。</p>':'');
     }
+
     function rating(total){
       if(total<=5) return '極慢';
       if(total<=15) return '緩慢';
@@ -77,93 +106,25 @@
       if(total<=100) return '極限';
       return '混沌';
     }
-    function downloadCSV(name, rows){
-      const csv = rows.map(r=>r.map(v=>{
-        const s=String(v??''); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;
-      }).join(',')).join('\r\n');
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
-      const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    }
 
-    // ---------- 介面元素 ----------
-    const latestGrid = document.getElementById('latest-grid');
-    const searchGrid = document.getElementById('search-grid');
-    const weekSelect = document.getElementById('week-select');
-    const q = document.getElementById('q');
-    const hint = document.getElementById('hint');
-
-    // ---------- Render ----------
-    function renderWeekOptions(){
-      weekSelect.innerHTML='';
-      lastNWeekStarts(12).forEach((iso,i)=>{
-        const opt=document.createElement('option'); opt.value=iso; opt.textContent=`${weekLabelFromISO(iso)}（週一~週日）`;
-        if(i===0) opt.selected=true; weekSelect.appendChild(opt);
-      });
-    }
-
-    function renderLatest(db){
-      const items = [...db.items].sort((a,b)=> (b.updatedAt||b.createdAt||0) - (a.updatedAt||a.createdAt||0)).slice(0,9);
-      latestGrid.innerHTML = items.length
-        ? items.map(a=>`
-            <article class="card">
-              <img class="thumb" src="${a.image||'assets/hero.svg'}" alt="${a.name}">
-              <div>
-                <h3 style="margin:.6rem 0 .25rem">${a.name}</h3>
-                ${badgeHTML(a)}
-              </div>
-            </article>
-          `).join('')
-        : '<p class="muted">尚未登記動畫。</p>';
-    }
-
-    function renderSearch(db, kw=''){
-      kw = kw.trim().toLowerCase();
-      const list = kw? db.items.filter(a=>a.name.toLowerCase().includes(kw)) : [];
-      searchGrid.innerHTML = list.length
-        ? list.map(a=>`
-            <article class="card">
-              <img class="thumb" src="${a.image||'assets/hero.svg'}" alt="${a.name}">
-              <div>
-                <h3 style="margin:.6rem 0 .25rem">${a.name}</h3>
-                ${badgeHTML(a)}
-              </div>
-            </article>
-          `).join('')
-        : (kw? '<p class="muted">沒有符合的作品。</p>' : '');
-    }
-
-    async function refreshFromCloud(){
-      const data = await cloudGetAll(); saveLocal(data); return data;
-    }
-
-    // ---------- 匯出 ----------
     function exportWeekCSV(db, weekISO){
-      const byAnime = new Map();
-      db.logs.filter(l=>l.weekStartISO===weekISO).forEach(l=>{
-        const set = byAnime.get(l.animeId) ?? new Set();
-        l.eps.forEach(e=> set.add(e)); byAnime.set(l.animeId, set);
-      });
-
       const id2item = Object.fromEntries(db.items.map(a=>[a.id,a]));
-      const entries = Array.from(byAnime.entries()).sort((A,B)=>{
-        const aName = id2item[A[0]]?.name || ''; const bName = id2item[B[0]]?.name || '';
-        return aName.localeCompare(bName,'zh-Hant');
+      const by = new Map();
+      db.logs.filter(l=>l.weekStartISO===weekISO).forEach(l=>{
+        const set = by.get(l.animeId) ?? new Set();
+        l.eps.forEach(e=> set.add(e)); by.set(l.animeId, set);
       });
 
-      const rows = [];
-      rows.push(['動漫','集數','進度(第X集)','', '速度評價(Y集)']);
-      let total = 0;
-
-      for(const [aid, set] of entries){
-        const eps = Array.from(set).sort((x,y)=>x-y);
-        total += eps.length;
+      const rows=[]; rows.push(['動漫','集數','進度(第X集)','', '速度評價(Y集)']);
+      let total=0;
+      for(const [aid,set] of Array.from(by.entries()).sort((A,B)=>{
+        const a=id2item[A[0]]?.name||''; const b=id2item[B[0]]?.name||''; return a.localeCompare(b,'zh-Hant');
+      })){
+        const eps = Array.from(set).sort((x,y)=>x-y); total+=eps.length;
         rows.push([ id2item[aid]?.name || aid, String(eps.length), compressRanges(eps).join(', ') ]);
       }
-
-      rows.push([]);                 // 空行
-      rows.push(['總計', String(total)]); // A-n+2, B-n+2
-      rows[1][4] = `速度評價（${total}集）`; // E-1
-      rows[2][4] = rating(total);        // E-2
+      rows.push([]); rows.push(['總計', String(total)]);
+      rows[1][4] = `速度評價（${total}集）`; rows[2][4] = rating(total);
 
       const filename = `anime_week_${weekISO} (${weekLabelFromISO(weekISO)}).csv`;
       downloadCSV(filename, rows);
@@ -172,45 +133,20 @@
     function exportAllWeeksCSV(db){
       const weeks = Array.from(new Set(db.logs.map(l=>l.weekStartISO))).sort();
       if(!weeks.length){ alert('沒有任何週次資料可匯出'); return; }
-      weeks.forEach(w=> exportWeekCSV(db, w));
+      weeks.forEach(w=> exportWeekCSV(db,w));
     }
 
-    // ---------- 事件 ----------
-    document.getElementById('btn-export-week').addEventListener('click', ()=>{
-      exportWeekCSV(loadLocal(), weekSelect.value);
-    });
-    document.getElementById('btn-export-all').addEventListener('click', ()=>{
-      exportAllWeeksCSV(loadLocal());
-    });
-    document.getElementById('btn-refresh').addEventListener('click', async ()=>{
+    document.getElementById('expWeek').addEventListener('click', ()=> exportWeekCSV(loadLocal(), weekSel.value));
+    document.getElementById('expAll').addEventListener('click', ()=> exportAllWeeksCSV(loadLocal()));
+    document.getElementById('refresh').addEventListener('click', async ()=>{
       hint.textContent='同步中…';
-      try{ const data=await refreshFromCloud(); renderLatest(data); renderSearch(data,q.value); hint.textContent='同步完成'; setTimeout(()=>hint.textContent='',1200); }
-      catch(e){ console.error(e); hint.textContent='同步失敗（使用本機資料）'; setTimeout(()=>hint.textContent='',2000); }
+      try{ const cloud=await cloudGetAll(); saveLocal(cloud); renderLatest(cloud); renderSearch(cloud, q.value); hint.textContent='同步完成'; setTimeout(()=>hint.textContent='',1200);}
+      catch{ hint.textContent='同步失敗（使用本機資料）'; setTimeout(()=>hint.textContent='',2000); }
     });
     q.addEventListener('input', ()=> renderSearch(loadLocal(), q.value));
 
-    // ---------- 啟動 ----------
-    renderWeekOptions();
-    const db = loadLocal();
-    renderLatest(db);
-    renderSearch(db, '');
+    function init(){ fillWeeks(); const db=loadLocal(); renderLatest(db); renderSearch(db,''); }
+    init();
   </script>
-  <script>
-  // 自動載入共用 header（含 cache-busting）
-  (function loadSharedPart(){
-    const ts = (window.__BUILD_TS || Date.now()); // 版本號/時間戳
-    document.querySelectorAll('[data-include]').forEach(el=>{
-      const file = el.getAttribute('data-include');
-      const url = file + '?v=' + ts;
-      fetch(url).then(r=>r.text()).then(html=>{
-        el.innerHTML = html;
-        // 載入完成後（header 已插入 DOM），呼叫全域初始化（若有）
-        if (window.setupHeader) window.setupHeader();
-      }).catch(err=>{
-        console.error('無法載入共用檔案：', file, err);
-      });
-    });
-  })();
-</script>
 </body>
 </html>
