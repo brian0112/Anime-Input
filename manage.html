@@ -89,5 +89,22 @@
 
     renderList();
   </script>
+  <script>
+  // 自動載入共用 header（含 cache-busting）
+  (function loadSharedPart(){
+    const ts = (window.__BUILD_TS || Date.now()); // 版本號/時間戳
+    document.querySelectorAll('[data-include]').forEach(el=>{
+      const file = el.getAttribute('data-include');
+      const url = file + '?v=' + ts;
+      fetch(url).then(r=>r.text()).then(html=>{
+        el.innerHTML = html;
+        // 載入完成後（header 已插入 DOM），呼叫全域初始化（若有）
+        if (window.setupHeader) window.setupHeader();
+      }).catch(err=>{
+        console.error('無法載入共用檔案：', file, err);
+      });
+    });
+  })();
+</script>
 </body>
 </html>
