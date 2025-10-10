@@ -71,3 +71,36 @@ export async function bootstrap() {
     console.error('Cloud sync failed:', err);
   }
 }
+// === 主題切換（深/淺色） ===
+function setupHeaderThemeToggle(){
+  // 套用記憶的主題（預設深色）
+  const saved = localStorage.getItem('theme'); // 'light' | 'dark' | null
+  if (saved === 'light') document.documentElement.classList.add('light');
+
+  // 綁定按鈕
+  const btn = document.getElementById('themeToggle');
+  if (!btn) return; // header 可能尚未載入
+
+  const applyLabel = ()=>{
+    const isLight = document.documentElement.classList.contains('light');
+    btn.textContent = isLight ? '深色' : '淺色'; // 顯示切換成對方
+    btn.setAttribute('aria-pressed', String(isLight));
+  };
+  applyLabel();
+
+  btn.addEventListener('click', ()=>{
+    const isLight = document.documentElement.classList.toggle('light');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    applyLabel();
+  });
+}
+
+// 讓 include-loader 能在把 header 放進頁面後呼叫
+if (typeof window !== 'undefined') {
+  window.setupHeader = setupHeaderThemeToggle;
+}
+
+// 若某頁沒有用 include-loader，也保險在 DOM 完成時再試一次
+document.addEventListener('DOMContentLoaded', ()=> {
+  try { setupHeaderThemeToggle(); } catch (_) {}
+});
