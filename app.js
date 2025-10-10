@@ -1,120 +1,130 @@
-/**************** CONFIG：請改你的 URL / TOKEN ****************/
+/**************** CONFIG（請改成你的 URL / TOKEN） ****************/
 export const API_URL   = 'https://script.google.com/macros/s/AKfycbyHc_6KQmrJ2BwHMX6P5aPT87WZ4EZCgoLq6qUvzZxTl7KDYAjhXVGa6vAaHkfvCCm-/exec';
-export const API_TOKEN = 'Saray0112-Key';
+export const API_TOKEN = 'Saray0112_Key';
 const DB_KEY = 'animeDB_v2_cloud';
-/**************************************************************/
+/******************************************************************/
 
 /* 本機快取 */
 export function loadLocal(){
-  try { return JSON.parse(localStorage.getItem(DB_KEY)) ?? { items:[], logs:[] }; }
-  catch { return { items:[], logs:[] }; }
+  try{ return JSON.parse(localStorage.getItem(DB_KEY)) ?? { items:[], logs:[] }; }
+  catch{ return { items:[], logs:[] }; }
 }
 export function saveLocal(db){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+
+/* 小工具 */
 export const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 export const uniq  = arr => Array.from(new Set(arr));
+export const byStr = (a,b)=> String(a).localeCompare(String(b),'zh-Hant');
 
-/* ====== 週次（台北時區） ======
-   台灣固定 UTC+8，透過「加 8 小時後用 UTC API 取週幾」來得到台北時區的邏輯日曆。 */
-const TPE_OFFSET = 8 * 60 * 60 * 1000;
-const DAY = 24 * 60 * 60 * 1000;
-
-function toTpe(ms){ return new Date(ms + TPE_OFFSET); }      // 轉到「台北時區」視角
-function fromTpe(ms){ return new Date(ms - TPE_OFFSET); }    // 從「台北視角」轉回實際 UTC
-
-export function mondayOfTpe(d = new Date()){
-  const tpe = toTpe(d.getTime());
-  const dow = tpe.getUTCDay();               // 0(日)~6(六) 但以台北視角計
-  const delta = (dow === 0 ? 6 : dow - 1);   // 距離週一的天數
-  const mondayTpe = new Date(tpe.getTime() - delta * DAY);
-  mondayTpe.setUTCHours(0,0,0,0);            // 台北 00:00
-  return fromTpe(mondayTpe.getTime());       // 還原為實際 UTC 時刻
+/* 台北時區週次（週一~週日） */
+const TPE = 8*60*60*1000, DAY=24*60*60*1000;
+const toTpe = ms => new Date(ms + TPE);
+export function mondayOfTpe(d=new Date()){
+  const t=toTpe(d.getTime()), dow=t.getUTCDay(), delta=(dow===0?6:dow-1);
+  const mon = new Date(t.getTime()-delta*DAY); mon.setUTCHours(0,0,0,0);
+  return new Date(mon.getTime()-TPE);
 }
-
-export function isoDateTpe(d){               // 回傳「台北視角」日期 YYYY-MM-DD
-  const tpe = toTpe(d.getTime());
-  return tpe.toISOString().slice(0,10);
-}
-
-export function recentWeekStarts(n = 12){
-  const base = mondayOfTpe(new Date());     // 本週一（台北）
-  const out = [];
-  for(let i=0; i<n; i++){
-    const d = new Date(base.getTime() - i * 7 * DAY);
-    out.push(isoDateTpe(d));
-  }
+export function isoDateTpe(d){ return toTpe(d.getTime()).toISOString().slice(0,10); }
+export function recentWeekStarts(n=12){
+  const base = mondayOfTpe(new Date()); const out=[];
+  for(let i=0;i<n;i++){ const d=new Date(base.getTime()-i*7*DAY); out.push(isoDateTpe(d)); }
   return out;
 }
-
-export function weekLabelFromISO(iso){      // 顯示：MM/DD ~ MM/DD（台北）
-  const startUTC = new Date(`${iso}T00:00:00Z`);             // 以 UTC 解析
-  const startTpe = toTpe(startUTC.getTime());
-  const endTpe   = new Date(startTpe.getTime() + 6 * DAY);
-  const fmt = new Intl.DateTimeFormat('zh-TW', { timeZone:'Asia/Taipei', month:'numeric', day:'2-digit' });
-  return `${fmt.format(startTpe)} ~ ${fmt.format(endTpe)}`;
+export function weekLabelFromISO(iso){
+  const sUTC = new Date(iso+'T00:00:00Z');
+  const s = toTpe(sUTC.getTime()), e = new Date(s.getTime()+6*DAY);
+  const fmt = new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',month:'numeric',day:'2-digit'});
+  return `${fmt.format(s)} ~ ${fmt.format(e)}`;
 }
 
-/* ====== 工具 ====== */
-export function nextUnwatched(anime){
-  const set = new Set(anime?.watched || []);
-  for(let i=1; i<= (anime?.episodes||0); i++){
-    if(!set.has(i)) return i;
-  }
-  return 1;
-}
-export function expandRange(start, end){
-  const [s,e] = [Number(start), Number(end)];
-  if(!Number.isFinite(s) || !Number.isFinite(e)) return [];
-  const lo = Math.min(s,e), hi = Math.max(s,e);
-  const out = [];
-  for(let i=lo;i<=hi;i++) out.push(i);
-  return out;
+/* Badge：完成亮色 */
+export function badgeHTML(done,total){
+  const complete = total>0 && done>=total ? ' complete' : '';
+  return `<span class="badge${complete}">${done}/${total}</span>`;
 }
 
-/* ====== 雲端 API（避免 preflight） ====== */
-export const cloudEnabled = !!API_URL;
+/* 區間壓縮： [1,2,3,7,8] → ["1~3","7~8"] */
+export function compressRanges(nums){
+  if(!nums?.length) return [];
+  const a=[...new Set(nums)].sort((x,y)=>x-y), out=[]; let s=a[0],p=a[0];
+  for(let i=1;i<a.length;i++){ const v=a[i]; if(v===p+1){p=v;continue;} out.push(s===p?`${s}`:`${s}~${p}`); s=p=v; }
+  out.push(s===p?`${s}`:`${s}~${p}`); return out;
+}
 
+/* 匯出 CSV */
+export function downloadCSV(filename, rows){
+  const csv = rows.map(r => r.map(v=>{
+    const s=String(v??''); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;
+  }).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+/* 速度評價（以本週總集數 Y） */
+export function speedRating(y){
+  if(y<=5) return '極慢';
+  if(y<=15) return '緩慢';
+  if(y<=30) return '中等';
+  if(y<=50) return '快速';
+  if(y<=70) return '極快';
+  if(y<=100) return '極限';  // 100 歸入極限
+  if(y<=200) return '混沌';
+  return '混沌';
+}
+
+/* 雲端 API（避免預檢） */
 async function postAction(obj){
   const payload = JSON.stringify({ ...obj, token: API_TOKEN });
-  const r = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: payload
-  });
-  if(!r.ok) throw new Error(`${obj.action} failed (${r.status})`);
-  return r.json();
+  const r = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:payload });
+  const j = await r.json();
+  if(!r.ok || j.error) throw new Error(j.error || `${obj.action} failed`);
+  return j;
 }
-
 export async function cloudGetAll(){
-  const r = await fetch(`${API_URL}?action=getAll&token=${encodeURIComponent(API_TOKEN)}`, { method:'GET' });
-  if(!r.ok) throw new Error(`getAll failed (${r.status})`);
-  return r.json();
+  const r = await fetch(`${API_URL}?action=getAll&token=${encodeURIComponent(API_TOKEN)}`);
+  const j = await r.json();
+  if(j.error) throw new Error(j.error);
+  return j;
 }
-export function cloudAddAnime(data){ return postAction({ action:'addAnime', data }); }
-export function cloudDeleteAnime(id){ return postAction({ action:'deleteAnime', id }); }
-export function cloudAddLog(animeId, weekStartISO, eps){ return postAction({ action:'addLog', data:{ animeId, weekStartISO, eps } }); }
+export const cloudAddAnime    = data => postAction({ action:'addAnime', data });
+export const cloudDeleteAnime = id   => postAction({ action:'deleteAnime', id });
+export const cloudAddLog      = (animeId, weekStartISO, eps) => postAction({ action:'addLog', data:{animeId, weekStartISO, eps} });
 
-/* ====== 重複集數檢查 ====== */
-export function findDupEpisodes(anime, eps){
-  const watched = new Set(anime?.watched || []);
-  return uniq(eps).filter(x => watched.has(x));
-}
-
-/* ====== 主題切換（header 的按鈕） ====== */
-function setupHeaderThemeToggle(){
-  const saved = localStorage.getItem('theme');
-  if(saved === 'light') document.documentElement.classList.add('light');
-  const btn = document.getElementById('themeToggle'); if(!btn) return;
-  const apply = ()=>{
-    const light = document.documentElement.classList.contains('light');
-    btn.textContent = light ? '深色' : '淺色';
-    btn.setAttribute('aria-pressed', String(light));
-  };
-  apply();
-  btn.addEventListener('click', ()=>{
-    const light = document.documentElement.classList.toggle('light');
-    localStorage.setItem('theme', light ? 'light' : 'dark');
-    apply();
+/* 匯出：單週 CSV（依規格 A/B/C/E 欄，含總計與速度評價） */
+export function exportWeekCSV(db, weekISO){
+  const id2 = Object.fromEntries(db.items.map(a=>[a.id,a]));
+  const by  = new Map(); // animeId -> Set(eps)
+  db.logs.filter(l=>l.weekStartISO===weekISO).forEach(l=>{
+    const set = by.get(l.animeId) ?? new Set();
+    l.eps.forEach(e=>set.add(e)); by.set(l.animeId,set);
   });
+  const rows=[]; rows.push(['動漫','集數','進度(第X集)','', '速度評價(Y集)']);
+  let total=0;
+  const entries = Array.from(by.entries()).sort((A,B)=>byStr(id2[A[0]]?.name||A[0], id2[B[0]]?.name||B[0]));
+  for(const [aid,set] of entries){
+    const eps = Array.from(set).sort((x,y)=>x-y);
+    total += eps.length;
+    rows.push([ id2[aid]?.name || aid, String(eps.length), compressRanges(eps).join(', ') ]);
+  }
+  rows.push([]); rows.push(['總計', String(total)]);
+  rows[0][4] = `速度評價（${total}集）`;
+  rows[1][4] = speedRating(total);
+  const filename = `anime_week_${weekISO} (${weekLabelFromISO(weekISO)}).csv`;
+  downloadCSV(filename, rows);
 }
-if(typeof window!=='undefined') window.setupHeader = setupHeaderThemeToggle;
-document.addEventListener('DOMContentLoaded', ()=>{ try{ setupHeaderThemeToggle(); }catch(e){} });
+
+/* 匯出：多週（所選範圍）一次各出一檔 */
+export function exportWeeksCSV(db, weeks){
+  const list = weeks.slice().sort();
+  if(!list.length){ alert('沒有週次'); return; }
+  list.forEach(w => exportWeekCSV(db, w));
+}
+
+/* 搜尋過濾 */
+export function filterItemsByKeyword(items, kw){
+  const k = String(kw||'').trim().toLowerCase();
+  if(!k) return items;
+  return items.filter(a => String(a.name||'').toLowerCase().includes(k));
+}
