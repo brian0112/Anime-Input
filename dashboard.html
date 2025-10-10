@@ -1,63 +1,110 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>動畫紀錄</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
+  <script type="module" src="app.js"></script>
 </head>
 <body>
-  <div data-include="header.html"></div>
+  <header class="site-header container">
+    <a href="index.html" class="brand">🎬 動畫進度</a>
+    <nav class="nav">
+      <a href="dashboard.html">動畫紀錄</a>
+      <a href="manage.html">動畫登記</a>
+      <a href="overview.html">觀看總覽</a>
+    </nav>
+    <button id="themeToggle" class="btn outline">主題</button>
+  </header>
 
-  <main class="container">
-    <section class="section">
-      <h2>已登記動畫</h2>
-      <div id="list" class="grid"></div>
-      <p id="empty" class="muted" style="display:none">尚未登記任何動畫。</p>
-    </section>
+  <main class="container section">
+    <h2>觀看紀錄</h2>
+    <p>選擇一部動畫與週次後，勾選本週觀看集數以記錄。</p>
+
+    <div class="record-panel card">
+      <label>
+        動畫：
+        <select id="animeSelect"></select>
+      </label>
+      <label>
+        週次：
+        <select id="weekSelect"></select>
+      </label>
+
+      <div id="episodeArea" class="episode-area"></div>
+      <button id="saveLogBtn" class="btn primary">儲存紀錄</button>
+      <p id="statusMsg" class="muted"></p>
+    </div>
   </main>
 
   <footer class="site-footer container">
-    <small>© 動畫進度 · 由你打造 ✨</small>
+    © 動畫進度 · 由你打造 ✨
   </footer>
 
-  <!-- 載入共用 header -->
-  <script>
-    (function loadSharedPart(){
-      const ts = (window.__BUILD_TS || Date.now());
-      document.querySelectorAll('[data-include]').forEach(el=>{
-        const file = el.getAttribute('data-include');
-        fetch(file + '?v=' + ts).then(r=>r.text()).then(html=>{
-          el.innerHTML = html;
-          if (window.setupHeader) window.setupHeader();
-        });
-      });
-    })();
-  </script>
-
   <script type="module">
-    import { loadLocal, cloudGetAll, saveLocal, badgeHTML } from './app.js';
+    import { loadLocal, cloudGetAll, cloudAddLog, recentWeekStarts } from './app.js';
 
-    const list = document.getElementById('list');
-    const empty = document.getElementById('empty');
+    const animeSelect = document.getElementById('animeSelect');
+    const weekSelect = document.getElementById('weekSelect');
+    const episodeArea = document.getElementById('episodeArea');
+    const saveBtn = document.getElementById('saveLogBtn');
+    const msg = document.getElementById('statusMsg');
 
-    function render(db){
-      if(!db.items.length){ empty.style.display='block'; list.innerHTML=''; return; }
-      empty.style.display='none';
-      const items = [...db.items].sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
-      list.innerHTML = items.map(a => `
-        <article class="card">
-          <img class="thumb" src="${a.image||'assets/hero.svg'}" alt="${a.name}">
-          <h3 style="margin:.6rem 0 .25rem">${a.name}</h3>
-          ${badgeHTML(a)}
-        </article>
-      `).join('');
+    let db = loadLocal();
+
+    async function refreshData() {
+      try {
+        const r = await cloudGetAll();
+        db = r;
+        localStorage.setItem('animeDB_v2_cloud', JSON.stringify(r));
+      } catch {
+        console.warn('雲端同步失敗，使用本機快取');
+      }
+      populateSelects();
     }
 
-    async function init(){
-      try { const cloud = await cloudGetAll(); saveLocal(cloud); render(cloud); }
-      catch { render(loadLocal()); }
+    function populateSelects() {
+      animeSelect.innerHTML = db.items.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+      weekSelect.innerHTML = recentWeekStarts(12).map(iso => `<option value="${iso}">${iso}</option>`).join('');
+      renderEpisodes();
     }
-    init();
+
+    function renderEpisodes() {
+      const id = animeSelect.value;
+      const anime = db.items.find(a => a.id === id);
+      if (!anime) { episodeArea.innerHTML = '<p>尚未選擇動畫。</p>'; return; }
+
+      let html = '';
+      for (let i = 1; i <= anime.episodes; i++) {
+        html += `<label class="ep-btn"><input type="checkbox" value="${i}"> 第 ${i} 集</label>`;
+      }
+      episodeArea.innerHTML = html;
+    }
+
+    animeSelect.addEventListener('change', renderEpisodes);
+    weekSelect.addEventListener('change', renderEpisodes);
+
+    saveBtn.addEventListener('click', async () => {
+      const animeId = animeSelect.value;
+      const weekISO = weekSelect.value;
+      const eps = [...episodeArea.querySelectorAll('input:checked')].map(c => Number(c.value));
+      if (!animeId || !weekISO || eps.length === 0) {
+        msg.textContent = '請選擇動畫、週次與至少一集。';
+        return;
+      }
+
+      msg.textContent = '儲存中...';
+      try {
+        await cloudAddLog(animeId, weekISO, eps);
+        msg.textContent = '✅ 已儲存至雲端！';
+      } catch (e) {
+        console.error(e);
+        msg.textContent = '❌ 雲端同步失敗（稍後再試）';
+      }
+    });
+
+    refreshData();
   </script>
 </body>
 </html>
