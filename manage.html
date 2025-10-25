@@ -1,108 +1,67 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8">
   <title>動畫登記</title>
   <link rel="stylesheet" href="styles.css">
+  <script type="module">
+    import { loadLocal, saveLocal, uid } from './app.js';
+
+    const db = loadLocal();
+    const nameInput = document.getElementById('animeName');
+    const epInput = document.getElementById('animeEps');
+    const list = document.getElementById('animeList');
+    const msg = document.getElementById('msg');
+
+    function render() {
+      list.innerHTML = db.items
+        .map(a => `<li>${a.name} (${a.episodes}集)
+          <button onclick="delAnime('${a.id}')">刪除</button></li>`)
+        .join('');
+    }
+
+    function addAnime() {
+      const name = nameInput.value.trim();
+      const ep = parseInt(epInput.value);
+      if (!name || !ep) return alert('請輸入名稱與集數');
+      db.items.push({ id: uid(), name, episodes: ep, createdAt: Date.now(), updatedAt: Date.now() });
+      saveLocal(db);
+      render();
+      nameInput.value = epInput.value = '';
+      msg.textContent = '已新增！';
+    }
+
+    window.delAnime = (id) => {
+      if (!confirm('確定刪除此動畫？')) return;
+      db.items = db.items.filter(a => a.id !== id);
+      db.logs = db.logs.filter(l => l.animeId !== id);
+      saveLocal(db);
+      render();
+    };
+
+    window.onload = render;
+    window.addAnime = addAnime;
+  </script>
 </head>
 <body>
-  <div data-include="header.html"></div>
+  <header class="site-header container">
+    <a class="brand" href="index.html">⬅ 返回首頁</a>
+    <nav class="nav">
+      <a href="dashboard.html">動畫紀錄</a>
+      <a href="manage.html">動畫登記</a>
+      <a href="overview.html">觀看總覽</a>
+    </nav>
+  </header>
 
   <main class="container">
     <section class="section">
-      <h2>新增動畫</h2>
-      <div class="row">
-        <input id="name" placeholder="動畫名稱">
-        <input id="eps" type="number" min="1" step="1" placeholder="總集數">
-        <input id="img" placeholder="圖片網址（可留空）">
-        <button id="add" class="btn primary">儲存</button>
-      </div>
-      <p id="msg" class="muted"></p>
-    </section>
-
-    <section class="section">
-      <h2>已登記動畫 / 管理</h2>
-      <div id="grid" class="grid"></div>
-      <p id="empty" class="muted" style="display:none">尚未登記任何動畫。</p>
+      <h2>登記動畫</h2>
+      <input id="animeName" placeholder="動畫名稱">
+      <input id="animeEps" type="number" placeholder="集數">
+      <button class="btn primary" onclick="addAnime()">新增動畫</button>
+      <p id="msg"></p>
+      <ul id="animeList"></ul>
     </section>
   </main>
-
-  <footer class="site-footer container">
-    <small>© 動畫進度 · 由你打造 ✨</small>
-  </footer>
-
-  <!-- 載入共用 header -->
-  <script>
-    (function loadSharedPart(){
-      const ts = (window.__BUILD_TS || Date.now());
-      document.querySelectorAll('[data-include]').forEach(el=>{
-        const file = el.getAttribute('data-include');
-        fetch(file + '?v=' + ts).then(r=>r.text()).then(html=>{
-          el.innerHTML = html;
-          if (window.setupHeader) window.setupHeader();
-        });
-      });
-    })();
-  </script>
-
-  <script type="module">
-    import { cloudGetAll, cloudAddAnime, cloudDeleteAnime, saveLocal, loadLocal } from './app.js';
-
-    const nameEl = document.getElementById('name');
-    const epsEl  = document.getElementById('eps');
-    const imgEl  = document.getElementById('img');
-    const addBtn = document.getElementById('add');
-    const msg    = document.getElementById('msg');
-    const grid   = document.getElementById('grid');
-    const empty  = document.getElementById('empty');
-
-    function setMsg(t){ msg.textContent = t || ''; }
-
-    function render(db){
-      if(!db.items.length){ empty.style.display='block'; grid.innerHTML=''; return; }
-      empty.style.display='none';
-      grid.innerHTML = db.items.map(a=>`
-        <article class="card">
-          <img class="thumb" src="${a.image||'assets/hero.svg'}" alt="${a.name}">
-          <h3 style="margin:.6rem 0 .25rem">${a.name}</h3>
-          <p class="muted">集數：${a.episodes}</p>
-          <button class="btn" data-del="${a.id}">刪除</button>
-        </article>
-      `).join('');
-      grid.querySelectorAll('[data-del]').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          if(!confirm('確定刪除此動畫及其觀看紀錄？')) return;
-          setMsg('刪除中…');
-          try{
-            await cloudDeleteAnime(btn.dataset.del);
-            const data = await cloudGetAll(); saveLocal(data); render(data);
-            setMsg('刪除完成');
-          }catch(e){ console.error(e); setMsg('雲端同步失敗，但本機已更新（稍後再試）'); }
-        });
-      });
-    }
-
-    addBtn.addEventListener('click', async ()=>{
-      const name = nameEl.value.trim();
-      const episodes = Number(epsEl.value||0);
-      const image = imgEl.value.trim();
-
-      if(!name || episodes<=0){ setMsg('請輸入正確名稱與總集數'); return; }
-
-      setMsg('儲存中…');
-      try{
-        await cloudAddAnime({ id: crypto.randomUUID(), name, episodes, image, createdAt:Date.now(), updatedAt:Date.now() });
-        const data = await cloudGetAll(); saveLocal(data); render(data);
-        nameEl.value=''; epsEl.value=''; imgEl.value='';
-        setMsg('已新增');
-      }catch(e){ console.error(e); setMsg('雲端同步失敗（稍後再試）'); }
-    });
-
-    async function init(){
-      try{ const cloud = await cloudGetAll(); saveLocal(cloud); render(cloud); }
-      catch{ render(loadLocal()); }
-    }
-    init();
-  </script>
 </body>
 </html>
