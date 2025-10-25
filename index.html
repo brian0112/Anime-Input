@@ -1,42 +1,39 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <title>動畫進度</title>
+  <meta charset="utf-8">
+  <title>動畫進度首頁</title>
   <link rel="stylesheet" href="styles.css">
+  <script type="module">
+    import { exportBackup, importBackup } from './app.js';
+    window.exportBackup = exportBackup;
+    window.importBackup = importBackup;
+  </script>
 </head>
 <body>
-  <div data-include="header.html"></div>
+  <header class="site-header container">
+    <a class="brand" href="#">🌱 Anime Progress</a>
+    <nav class="nav">
+      <a href="dashboard.html">動畫紀錄</a>
+      <a href="manage.html">動畫登記</a>
+      <a href="overview.html">觀看總覽</a>
+    </nav>
+  </header>
 
   <main class="container">
     <section class="section">
-      <h2>歡迎使用「動畫進度」系統</h2>
-      <p class="muted">請使用上方導覽列前往「動畫登記」新增作品，或到「動畫紀錄」輸入每週觀看進度。</p>
-      <div class="row">
-        <a class="btn primary" href="manage.html">前往動畫登記</a>
-        <a class="btn" href="dashboard.html">前往動畫紀錄</a>
-        <a class="btn" href="overview.html">瀏覽觀看總覽</a>
-      </div>
+      <h2>備份與還原</h2>
+      <button class="btn primary" onclick="exportBackup()">匯出本機資料 JSON</button>
+      <label class="btn outline">
+        匯入本機資料
+        <input type="file" accept="application/json" style="display:none"
+          onchange="importBackup(this.files[0]).then(()=>alert('匯入完成，請重新整理頁面！')).catch(e=>alert(e))">
+      </label>
     </section>
   </main>
 
   <footer class="site-footer container">
-    <small>© 動畫進度 · 由你打造 ✨</small>
+    <small>&copy; 2025 Anime Progress</small>
   </footer>
-
-  <!-- 載入共用 header -->
-  <script>
-    (function loadSharedPart(){
-      const ts = (window.__BUILD_TS || Date.now());
-      document.querySelectorAll('[data-include]').forEach(el=>{
-        const file = el.getAttribute('data-include');
-        fetch(file + '?v=' + ts).then(r=>r.text()).then(html=>{
-          el.innerHTML = html;
-          if (window.setupHeader) window.setupHeader();
-        });
-      });
-    })();
-  </script>
-  <script type="module" src="app.js"></script>
 </body>
 </html>
