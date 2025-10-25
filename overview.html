@@ -1,25 +1,39 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
   <title>觀看總覽</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script type="module" src="app.js"></script>
-  <style>
-    .toolbar{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
-    .weeks-row{display:flex;gap:.5rem;flex-wrap:wrap}
-    .wbadge{border:1px solid var(--border);border-radius:.5rem;padding:.15rem .45rem;font-size:.85rem}
-    .wbadge[data-cnt="0"]{opacity:.6}
-    .card h4{margin:.6rem 0 .3rem}
-    .muted{color:var(--muted)}
-    .row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
-    .right{margin-left:auto}
-  </style>
+  <link rel="stylesheet" href="styles.css">
+  <script type="module">
+    import { loadLocal, weekLabel, getCurrentWeekStartISO } from './app.js';
+    const db = loadLocal();
+    const list = document.getElementById('overviewList');
+
+    function getWatched(animeId) {
+      const eps = new Set();
+      db.logs.forEach(l => {
+        if (l.animeId === animeId) l.eps.forEach(e => eps.add(e));
+      });
+      return Array.from(eps);
+    }
+
+    function render() {
+      list.innerHTML = db.items.map(a => {
+        const watched = getWatched(a.id);
+        const done = watched.length >= a.episodes;
+        return `<li class="card">
+          <h3>${a.name}</h3>
+          <p>觀看進度：<span class="${done ? 'complete' : ''}">${watched.length}/${a.episodes}</span></p>
+        </li>`;
+      }).join('');
+    }
+
+    window.onload = render;
+  </script>
 </head>
 <body>
   <header class="site-header container">
-    <a href="index.html" class="brand">🎬 動畫進度</a>
+    <a class="brand" href="index.html">⬅ 返回首頁</a>
     <nav class="nav">
       <a href="dashboard.html">動畫紀錄</a>
       <a href="manage.html">動畫登記</a>
@@ -27,131 +41,11 @@
     </nav>
   </header>
 
-  <main class="container section">
-    <h2>觀看總覽（多週）</h2>
-    <div class="card toolbar">
-      <label>顯示範圍
-        <select id="rangeSel">
-          <option value="4">最近 4 週</option>
-          <option value="8">最近 8 週</option>
-          <option value="12" selected>最近 12 週</option>
-        </select>
-      </label>
-      <label>搜尋
-        <input id="q" type="search" placeholder="輸入動畫名稱…">
-      </label>
-      <label class="row"><input type="checkbox" id="onlyActive"> 只看本期有進度</label>
-      <button id="refresh" class="btn">重新整理</button>
-      <div class="right row">
-        <button id="expRange" class="btn primary">匯出此範圍：每週各一份 CSV</button>
-      </div>
-      <span id="hint" class="muted"></span>
-    </div>
-
-    <div id="grid" class="grid" style="margin-top:1rem"></div>
+  <main class="container">
+    <section class="section">
+      <h2>觀看總覽</h2>
+      <ul id="overviewList" class="grid"></ul>
+    </section>
   </main>
-
-  <footer class="site-footer container">© 動畫進度 · 由你打造 ✨</footer>
-
-  <script type="module">
-    import {
-      cloudGetAll, saveLocal, loadLocal,
-      recentWeekStarts, weekLabelFromISO,
-      filterItemsByKeyword, badgeHTML,
-      exportWeeksCSV, compressRanges
-    } from './app.js';
-
-    const rangeSel = document.getElementById('rangeSel');
-    const q        = document.getElementById('q');
-    const onlyAct  = document.getElementById('onlyActive');
-    const refresh  = document.getElementById('refresh');
-    const expRange = document.getElementById('expRange');
-    const hint     = document.getElementById('hint');
-    const grid     = document.getElementById('grid');
-
-    let db = loadLocal();
-    let weeks = recentWeekStarts(Number(rangeSel.value||12));
-
-    function buildWeeks(){
-      weeks = recentWeekStarts(Number(rangeSel.value||12));
-    }
-
-    function mapWeekEps(db){
-      // 回傳：animeId -> (weekISO -> eps[])
-      const map = new Map();
-      db.logs.forEach(l=>{
-        const m = map.get(l.animeId) ?? new Map();
-        const arr = m.get(l.weekStartISO) ?? [];
-        m.set(l.weekStartISO, arr.concat(l.eps));
-        map.set(l.animeId, m);
-      });
-      // 去重排序
-      for(const m of map.values()){
-        for(const k of m.keys()){
-          const arr = m.get(k);
-          const set = Array.from(new Set(arr)).sort((a,b)=>a-b);
-          m.set(k, set);
-        }
-      }
-      return map;
-    }
-
-    function render(){
-      const kw = q.value||'';
-      const idWeekMap = mapWeekEps(db);
-      const showItems = filterItemsByKeyword(db.items, kw)
-        .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
-
-      const cards = [];
-      for(const a of showItems){
-        const wm = idWeekMap.get(a.id) || new Map();
-
-        // 本期是否有進度
-        const totalThisRange = weeks.reduce((s,w)=> s + ((wm.get(w)||[]).length), 0);
-        if(onlyAct.checked && totalThisRange===0) continue;
-
-        const weeksHtml = weeks.map(w=>{
-          const eps = wm.get(w) || [];
-          const tip = eps.length ? `本週 ${eps.length} 集：${compressRanges(eps).join(', ')}` : `本週 0 集`;
-          return `<span class="wbadge" data-cnt="${eps.length}" title="${tip}">${weekLabelFromISO(w)}：${eps.length} 集</span>`;
-        }).join('');
-
-        cards.push(`
-          <article class="card">
-            <h4>${a.name}</h4>
-            ${badgeHTML(a.watched?.length||0, a.episodes||0)}
-            <div class="weeks-row" style="margin-top:.5rem">${weeksHtml}</div>
-          </article>
-        `);
-      }
-
-      grid.innerHTML = cards.join('') || `<p class="muted">此範圍內沒有符合條件的作品。</p>`;
-    }
-
-    async function syncCloud(){
-      hint.textContent='同步中…';
-      try{
-        const fresh = await cloudGetAll();
-        db = fresh; saveLocal(fresh);
-        hint.textContent='已同步';
-      }catch(e){
-        hint.textContent='同步失敗（使用本機資料）';
-        console.warn(e);
-      }finally{
-        setTimeout(()=>hint.textContent='',1500);
-      }
-      render();
-    }
-
-    rangeSel.addEventListener('change', ()=>{ buildWeeks(); render(); });
-    q.addEventListener('input', render);
-    onlyAct.addEventListener('change', render);
-    refresh.addEventListener('click', syncCloud);
-    expRange.addEventListener('click', ()=> exportWeeksCSV(db, weeks));
-
-    // 初始
-    buildWeeks(); render(); // 先用本機
-    syncCloud();           // 再拉雲端
-  </script>
 </body>
 </html>
