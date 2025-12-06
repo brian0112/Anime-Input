@@ -266,3 +266,22 @@ button.outline:hover {
     background: rgba(56, 189, 248, 0.1);
     color: var(--accent-color);
 }
+
+/* ===== V6.0 新增樣式 ===== */
+
+/* 小型按鈕 (用於列表右側) */
+.btn-sm {
+  width: auto !important; /* 強制取消 100% 寬度 */
+  padding: 6px 15px;      /* 縮小內距 */
+  font-size: 0.9rem;      /* 字體稍微縮小 */
+  margin: 0;              /* 移除多餘邊距 */
+  align-self: center;     /* 確保垂直置中 */
+}
+
+/* 針對歷史紀錄彈窗的列表樣式微調 */
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px; /* 增加一點呼吸感 */
+}
