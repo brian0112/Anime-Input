@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>管理資料 - Anime Input</title>
+    <title>管理資料</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,10 +14,15 @@
     </nav>
 
     <div class="container">
-        <div class="glass-card" style="max-width: 800px; margin: 0 auto;">
-            <h2 style="border-bottom: 1px solid var(--glass-border); padding-bottom:15px; margin-bottom:20px;">資料管理</h2>
-            <div id="manageList">
-                </div>
+        <div class="glass-card" style="margin-bottom: 30px;">
+            <h3>資料備份</h3>
+            <p style="color:var(--text-secondary); margin-bottom:15px;">下載資料庫的 JSON 檔案，以防資料遺失。</p>
+            <button onclick="exportToJSON()" style="width: auto; background: linear-gradient(135deg, #10b981, #059669);">下載備份 (.json)</button>
+        </div>
+
+        <div class="glass-card">
+            <h3>刪除動畫</h3>
+            <div id="manageList"></div>
         </div>
     </div>
     <script src="app.js"></script>
