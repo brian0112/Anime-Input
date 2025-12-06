@@ -1,43 +1,25 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>管理資料</title>
-<link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <title>管理資料 - Anime Input</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body onload="loadManage()">
-<h1>管理資料</h1>
+<body>
+    <nav>
+        <a href="index.html">新增</a>
+        <a href="dashboard.html">紀錄</a>
+        <a href="manage.html" class="active">管理</a>
+        <a href="overview.html">總覽</a>
+    </nav>
 
-
-<nav>
-<a href="index.html">新增</a>
-<a href="dashboard.html">紀錄</a>
-<a href="manage.html">管理</a>
-<a href="overview.html">總覽</a>
-</nav>
-
-
-<h2>資料列表</h2>
-<table>
-<thead>
-<tr>
-<th>名稱</th>
-<th>進度</th>
-<th>操作</th>
-</tr>
-</thead>
-<tbody id="manageList"></tbody>
-</table>
-
-
-<h2>資料備份</h2>
-<button onclick="exportToJSON()">匯出本機資料 JSON</button>
-
-
-<h3>匯入資料</h3>
-<input type="file" accept="application/json" onchange="importFromJSON(event)">
-
-
-<script src="app.js"></script>
+    <div class="container">
+        <div class="glass-card" style="max-width: 800px; margin: 0 auto;">
+            <h2 style="border-bottom: 1px solid var(--glass-border); padding-bottom:15px; margin-bottom:20px;">資料管理</h2>
+            <div id="manageList">
+                </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
 </body>
 </html>
