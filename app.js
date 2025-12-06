@@ -358,6 +358,50 @@ function generateCSV() {
     document.body.removeChild(link);
 }
 
+// ===== V7.0 熱力圖渲染邏輯 =====
+function renderHeatmap() {
+    const container = document.getElementById('heatmap');
+    if (!container) return; // 防止在非 overview 頁面報錯
+
+    container.innerHTML = '';
+    const data = loadData();
+
+    // 1. 資料清洗
+    const dailyCounts = {};
+    data.forEach(anime => {
+        anime.history.forEach(h => {
+            const date = new Date(h.id);
+            // 轉成 YYYY-MM-DD
+            const dateStr = `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`;
+            
+            if (!dailyCounts[dateStr]) dailyCounts[dateStr] = 0;
+            dailyCounts[dateStr] += h.count;
+        });
+    });
+
+    // 2. 生成過去 365 天的格子
+    for (let i = 364; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i); // 今天往前推 i 天
+        
+        const dateStr = `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+        const count = dailyCounts[dateStr] || 0;
+
+        // 3. 決定顏色等級
+        let level = 'level-0';
+        if (count > 0) level = 'level-1';
+        if (count > 3) level = 'level-2';
+        if (count > 6) level = 'level-3';
+        if (count > 10) level = 'level-4';
+
+        // 4. 建立 HTML
+        const square = document.createElement('div');
+        square.className = `day-square ${level}`;
+        square.title = `${dateStr}: 看了 ${count} 集`; // 滑鼠移上去會顯示資訊
+        
+        container.appendChild(square);
+    }
+}
 // ===== 4. 總覽頁面 (Overview) =====
 function loadOverview() {
     const data = loadData();
@@ -429,6 +473,7 @@ function loadOverview() {
             });
         }
     }
+    renderHeatmap(); 
 }
 
 // ===== 初始化 =====
