@@ -1,67 +1,43 @@
-<!doctype html>
-<html lang="zh-Hant">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8">
-  <title>動畫登記</title>
-  <link rel="stylesheet" href="styles.css">
-  <script type="module">
-    import { loadLocal, saveLocal, uid } from './app.js';
-
-    const db = loadLocal();
-    const nameInput = document.getElementById('animeName');
-    const epInput = document.getElementById('animeEps');
-    const list = document.getElementById('animeList');
-    const msg = document.getElementById('msg');
-
-    function render() {
-      list.innerHTML = db.items
-        .map(a => `<li>${a.name} (${a.episodes}集)
-          <button onclick="delAnime('${a.id}')">刪除</button></li>`)
-        .join('');
-    }
-
-    function addAnime() {
-      const name = nameInput.value.trim();
-      const ep = parseInt(epInput.value);
-      if (!name || !ep) return alert('請輸入名稱與集數');
-      db.items.push({ id: uid(), name, episodes: ep, createdAt: Date.now(), updatedAt: Date.now() });
-      saveLocal(db);
-      render();
-      nameInput.value = epInput.value = '';
-      msg.textContent = '已新增！';
-    }
-
-    window.delAnime = (id) => {
-      if (!confirm('確定刪除此動畫？')) return;
-      db.items = db.items.filter(a => a.id !== id);
-      db.logs = db.logs.filter(l => l.animeId !== id);
-      saveLocal(db);
-      render();
-    };
-
-    window.onload = render;
-    window.addAnime = addAnime;
-  </script>
+<meta charset="UTF-8">
+<title>管理資料</title>
+<link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <header class="site-header container">
-    <a class="brand" href="index.html">⬅ 返回首頁</a>
-    <nav class="nav">
-      <a href="dashboard.html">動畫紀錄</a>
-      <a href="manage.html">動畫登記</a>
-      <a href="overview.html">觀看總覽</a>
-    </nav>
-  </header>
+<body onload="loadManage()">
+<h1>管理資料</h1>
 
-  <main class="container">
-    <section class="section">
-      <h2>登記動畫</h2>
-      <input id="animeName" placeholder="動畫名稱">
-      <input id="animeEps" type="number" placeholder="集數">
-      <button class="btn primary" onclick="addAnime()">新增動畫</button>
-      <p id="msg"></p>
-      <ul id="animeList"></ul>
-    </section>
-  </main>
+
+<nav>
+<a href="index.html">新增</a>
+<a href="dashboard.html">紀錄</a>
+<a href="manage.html">管理</a>
+<a href="overview.html">總覽</a>
+</nav>
+
+
+<h2>資料列表</h2>
+<table>
+<thead>
+<tr>
+<th>名稱</th>
+<th>進度</th>
+<th>操作</th>
+</tr>
+</thead>
+<tbody id="manageList"></tbody>
+</table>
+
+
+<h2>資料備份</h2>
+<button onclick="exportToJSON()">匯出本機資料 JSON</button>
+
+
+<h3>匯入資料</h3>
+<input type="file" accept="application/json" onchange="importFromJSON(event)">
+
+
+<script src="app.js"></script>
 </body>
 </html>
