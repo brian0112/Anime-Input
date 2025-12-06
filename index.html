@@ -1,44 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>新增動畫</title>
-<link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <title>新增動畫 - Anime Input</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1>新增動畫</h1>
+    <nav>
+        <a href="index.html" class="active">新增</a>
+        <a href="dashboard.html">紀錄</a>
+        <a href="manage.html">管理</a>
+        <a href="overview.html">總覽</a>
+    </nav>
 
+    <div class="container">
+        <div class="glass-card" style="max-width: 600px; margin: 0 auto;">
+            <h2 style="text-align:center; margin-bottom:30px;">新增追番</h2>
+            
+            <form onsubmit="addAnime(event)">
+                <label>動畫名稱</label>
+                <input id="title" type="text" required placeholder="例如：膽大黨">
 
-<nav>
-<a href="index.html">新增</a>
-<a href="dashboard.html">紀錄</a>
-<a href="manage.html">管理</a>
-<a href="overview.html">總覽</a>
-</nav>
+                <label>週次 (自動計算 UTC+8)</label>
+                <select id="weekSelect"></select>
 
+                <label>總集數</label>
+                <input id="total" type="number" min="1" required placeholder="12">
 
-<form id="animeForm" onsubmit="addAnime(event)">
-  <label>動畫名稱</label>
-  <input id="title" required placeholder="例如：葬送的芙莉蓮">
+                <label>封面圖片網址 (選填)</label>
+                <input id="imgUrl" type="url" placeholder="https://example.com/image.jpg">
 
-  <label>封面圖片網址 (JPG/PNG)</label>
-  <input id="imageUrl" type="url" placeholder="貼上圖片連結，若無可留空">
-
-  <label>總集數</label>
-  <input id="total" type="number" required min="1">
-
-  <label>評分</label>
-  <select id="rating">
-    <option value="S">S (神作)</option>
-    <option value="A">A (推薦)</option>
-    <option value="B">B (普通)</option>
-    <option value="C">C (棄番)</option>
-  </select>
-
-  <button type="submit" class="btn primary" style="margin-top: 1rem; width: 100%">新增動畫</button>
-</form>
-
-
-<script src="app.js"></script>
+                <button type="submit" style="margin-top:20px;">加入清單</button>
+            </form>
+        </div>
+    </div>
+    <script src="app.js"></script>
 </body>
 </html>
