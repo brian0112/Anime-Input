@@ -214,3 +214,55 @@ button.outline:hover {
   align-items: center;
   font-size: 0.9rem;
 }
+
+/* ===== 總覽頁面圖表樣式 ===== */
+.chart-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.pie-chart {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    /* 這裡的 background 會被 JS 動態覆蓋 */
+    background: conic-gradient(var(--accent-color) 0% 0%, rgba(255,255,255,0.1) 0% 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+}
+
+.pie-inner {
+    width: 120px;
+    height: 120px;
+    background: #1e293b; /* 配合卡片背景色 */
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+/* 上傳按鈕樣式 */
+.file-upload {
+    display: inline-block;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: rgba(255,255,255,0.1);
+    border: 1px dashed var(--accent-color);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    transition: 0.3s;
+    text-align: center;
+    width: 100%;
+}
+.file-upload:hover {
+    background: rgba(56, 189, 248, 0.1);
+    color: var(--accent-color);
+}
