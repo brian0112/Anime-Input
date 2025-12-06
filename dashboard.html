@@ -5,30 +5,22 @@
 <title>觀看紀錄</title>
 <link rel="stylesheet" href="styles.css">
 </head>
-<body onload="loadDashboard()">
-<h1>觀看紀錄</h1>
+<body onload="loadDashboard()"> <div class="container"> <header class="site-header">
+      <div class="brand">Anime Input</div>
+      <nav class="nav">
+        <a href="index.html">新增</a>
+        <a href="dashboard.html" style="color:var(--text)">紀錄</a>
+        <a href="manage.html">管理</a>
+        <a href="overview.html">總覽</a>
+      </nav>
+    </header>
 
-
-<nav>
-<a href="index.html">新增</a>
-<a href="dashboard.html">紀錄</a>
-<a href="manage.html">管理</a>
-<a href="overview.html">總覽</a>
-</nav>
-
-
-<table>
-<thead>
-<tr>
-<th>名稱</th>
-<th>進度</th>
-<th>操作</th>
-</tr>
-</thead>
-<tbody id="animeList"></tbody>
-</table>
-
-
-<script src="app.js"></script>
+    <div class="section">
+      <h1>觀看紀錄</h1>
+      <div id="animeList" class="grid">
+        </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
 </body>
 </html>
