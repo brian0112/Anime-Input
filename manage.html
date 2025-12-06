@@ -14,14 +14,31 @@
     </nav>
 
     <div class="container">
-        <div class="glass-card" style="margin-bottom: 30px; border-left: 5px solid var(--accent-color);">
+        <div class="glass-card" style="margin-bottom: 30px;">
+            <h3>💾 系統備份與還原</h3>
+            <p style="color:var(--text-secondary); margin-bottom:15px; font-size:0.9rem;">
+                使用 .json 檔案完整保存或轉移資料（包含所有歷史紀錄）。
+            </p>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                <button onclick="exportToJSON()" style="background:var(--accent-color);">匯出備份 (JSON)</button>
+                
+                <div>
+                    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importFromJSON(event)">
+                    <label for="importFile" class="file-upload">
+                        📥 匯入還原 (JSON)
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card" style="margin-bottom: 30px; border-left: 5px solid #10b981;">
             <h3>📊 生成週報表 (CSV)</h3>
-            <p style="color:var(--text-secondary); margin-bottom:15px;">
-                選擇週次，生成符合格式的觀看速度評級表。
+            <p style="color:var(--text-secondary); margin-bottom:15px; font-size:0.9rem;">
+                生成符合格式的觀看速度評級表（僅供 Excel 檢視）。
             </p>
             <div style="display:flex; gap:10px; align-items:center;">
                 <select id="csvWeekSelect" style="margin:0; flex:2;"></select>
-                <button onclick="generateCSV()" style="margin:0; flex:1;">下載報表</button>
+                <button onclick="generateCSV()" style="margin:0; flex:1; background:linear-gradient(135deg, #10b981, #059669);">下載報表</button>
             </div>
         </div>
 
