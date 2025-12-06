@@ -144,15 +144,18 @@ function submitUpdate() {
     loadDashboard();
 }
 
+// app.js - 找到 openHistoryModal 函式並替換
 function openHistoryModal(id) {
     currentAnimeId = id;
-    const modal = document.getElementById('historyModal');
+    const modal = document.getElementById('updateModal'); // 修正：這裡應該要對應 historyModal，如果你原本代碼是 updateModal 請自行確認，通常是 'historyModal'
+    // --- 為了保險起見，請直接用下面這段完整的 historyModal 邏輯 ---
+    
+    const historyModal = document.getElementById('historyModal');
     const list = document.getElementById('historyList');
     const data = loadData();
     const anime = data.find(a => a.id === id);
     list.innerHTML = '';
     
-    // 依日期倒序
     const sortedHistory = [...anime.history].sort((a,b) => b.id - a.id);
 
     if (sortedHistory.length === 0) {
@@ -161,14 +164,21 @@ function openHistoryModal(id) {
         sortedHistory.forEach(h => {
             const item = document.createElement('div');
             item.className = 'history-item';
+            
+            // V6 修改：判斷集數顯示邏輯
+            const epDisplay = (h.start === h.end) ? `第 ${h.start} 集` : `第 ${h.start}-${h.end} 集`;
+
             item.innerHTML = `
-                <div><span style="color:var(--accent-color)">${h.week}</span> 第 ${h.start}-${h.end} 集</div>
-                <button class="danger" style="padding:4px 8px;" onclick="deleteHistory(${h.id})">X</button>
+                <div>
+                    <span style="color:var(--accent-color); margin-right:8px;">${h.week}</span> 
+                    <span>${epDisplay}</span>
+                </div>
+                <button class="danger btn-sm" onclick="deleteHistory(${h.id})">刪除</button>
             `;
             list.appendChild(item);
         });
     }
-    modal.classList.add('active');
+    historyModal.classList.add('active');
 }
 
 function deleteHistory(historyId) {
@@ -289,7 +299,7 @@ function loadManage() {
         item.style.alignItems = 'center';
         item.innerHTML = `
             <div>${anime.title}</div>
-            <button class="danger" style="margin:0;" onclick="deleteAnime(${anime.id})">刪除</button>
+            <button class="danger btn-sm" onclick="deleteAnime(${anime.id})">刪除</button>
         `;
         list.appendChild(item);
     });
@@ -330,45 +340,53 @@ function loadOverview() {
     }
 
     // 4. 更新近期活動列表
+    // 4. 更新近期活動列表
     const activityList = document.getElementById('activityList');
     if (activityList) {
         activityList.innerHTML = '';
-        // 收集所有歷史紀錄並打平
         let allHistory = [];
         data.forEach(anime => {
             anime.history.forEach(h => {
+                // V6 修改：判斷集數顯示邏輯
+                const epDisplay = (h.start === h.end) ? `看了第 ${h.start} 集` : `看了第 ${h.start}-${h.end} 集`;
+                
                 allHistory.push({
                     animeTitle: anime.title,
                     week: h.week,
-                    desc: `看了第 ${h.start}-${h.end} 集`,
-                    timestamp: h.id // 假設 id 是 Date.now()
+                    desc: epDisplay, // 使用新的變數
+                    timestamp: h.id
                 });
             });
         });
         
-        // 取最新的 5 筆
         allHistory.sort((a, b) => b.timestamp - a.timestamp);
-        const recent = allHistory.slice(0, 5);
+        const recent = allHistory.slice(0, 5); // 取最新 5 筆
 
         if (recent.length === 0) {
             activityList.innerHTML = '<div style="color:var(--text-secondary)">尚無活動</div>';
         } else {
             recent.forEach(act => {
                 const row = document.createElement('div');
-                row.style.padding = '10px 0';
+                row.style.padding = '12px 0';
                 row.style.borderBottom = '1px solid var(--glass-border)';
+                // 使用 Flex 讓左右對齊更漂亮
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'center';
+                
                 row.innerHTML = `
-                    <div style="font-weight:bold;">${act.animeTitle}</div>
-                    <div style="font-size:0.85rem; color:var(--text-secondary); display:flex; justify-content:space-between;">
-                        <span>${act.desc}</span>
-                        <span>${act.week}</span>
+                    <div>
+                        <div style="font-weight:bold; margin-bottom:4px;">${act.animeTitle}</div>
+                        <div style="font-size:0.85rem; color:var(--text-secondary);">${act.desc}</div>
+                    </div>
+                    <div style="font-size:0.85rem; color:var(--text-secondary); text-align:right;">
+                        ${act.week}
                     </div>
                 `;
                 activityList.appendChild(row);
             });
         }
     }
-}
 
 window.onload = function() {
     loadDashboard();
