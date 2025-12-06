@@ -18,23 +18,24 @@
 
 
 <form id="animeForm" onsubmit="addAnime(event)">
-<label>動畫名稱</label>
-<input id="title" required>
+  <label>動畫名稱</label>
+  <input id="title" required placeholder="例如：葬送的芙莉蓮">
 
+  <label>封面圖片網址 (JPG/PNG)</label>
+  <input id="imageUrl" type="url" placeholder="貼上圖片連結，若無可留空">
 
-<label>總集數</label>
-<input id="total" type="number" required>
+  <label>總集數</label>
+  <input id="total" type="number" required min="1">
 
+  <label>評分</label>
+  <select id="rating">
+    <option value="S">S (神作)</option>
+    <option value="A">A (推薦)</option>
+    <option value="B">B (普通)</option>
+    <option value="C">C (棄番)</option>
+  </select>
 
-<label>評分</label>
-<select id="rating">
-<option value="A">A</option>
-<option value="B">B</option>
-<option value="C">C</option>
-</select>
-
-
-<button type="submit">新增</button>
+  <button type="submit" class="btn primary" style="margin-top: 1rem; width: 100%">新增動畫</button>
 </form>
 
 
