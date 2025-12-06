@@ -1,105 +1,34 @@
-<!doctype html>
-<html lang="zh-Hant">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8">
-  <title>動畫紀錄</title>
-  <link rel="stylesheet" href="styles.css">
-  <script type="module">
-    import { loadLocal, saveLocal, getCurrentWeekStartISO, weekLabel } from './app.js';
-
-    const db = loadLocal();
-    const animeSel = document.getElementById('animeSelect');
-    const weekSel = document.getElementById('weekSelect');
-    const addBtn = document.getElementById('addRange');
-    const list = document.getElementById('rangeList');
-    const saveBtn = document.getElementById('saveLog');
-    const msg = document.getElementById('msg');
-
-    let ranges = [];
-
-    function refreshAnimes() {
-      animeSel.innerHTML = db.items
-        .map(a => `<option value="${a.id}">${a.name} (${a.episodes} 集)</option>`)
-        .join('');
-    }
-
-    function refreshWeeks() {
-      const nowIso = getCurrentWeekStartISO();
-      for (let i = 0; i < 12; i++) {
-        const d = new Date();
-        d.setDate(d.getDate() - 7 * i);
-        const iso = getCurrentWeekStartISO();
-        const label = weekLabel(iso);
-        const opt = document.createElement('option');
-        opt.value = iso;
-        opt.textContent = label;
-        if (iso === nowIso) opt.selected = true;
-        weekSel.appendChild(opt);
-      }
-    }
-
-    function addRange() {
-      const start = parseInt(document.getElementById('startEp').value);
-      const end = parseInt(document.getElementById('endEp').value);
-      if (!start || !end || start > end) {
-        msg.textContent = '集數區間無效';
-        return;
-      }
-      ranges.push([start, end]);
-      renderRanges();
-    }
-
-    function renderRanges() {
-      list.innerHTML = ranges
-        .map((r, i) => `<li>Ep ${r[0]} ~ ${r[1]} <button onclick="removeRange(${i})">X</button></li>`)
-        .join('');
-    }
-    window.removeRange = (i) => { ranges.splice(i, 1); renderRanges(); };
-
-    function saveLog() {
-      const animeId = animeSel.value;
-      const week = weekSel.value;
-      if (!animeId) return alert('請選擇動畫');
-      const eps = [];
-      ranges.forEach(([s, e]) => { for (let i = s; i <= e; i++) eps.push(i); });
-      const log = { animeId, weekStartISO: week, eps: eps, createdAt: Date.now() };
-      db.logs.push(log);
-      saveLocal(db);
-      msg.textContent = '已儲存！';
-    }
-
-    window.onload = () => { refreshAnimes(); refreshWeeks(); };
-    window.addRange = addRange;
-    window.saveLog = saveLog;
-  </script>
+<meta charset="UTF-8">
+<title>觀看紀錄</title>
+<link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <header class="site-header container">
-    <a class="brand" href="index.html">⬅ 返回首頁</a>
-    <nav class="nav">
-      <a href="dashboard.html">動畫紀錄</a>
-      <a href="manage.html">動畫登記</a>
-      <a href="overview.html">觀看總覽</a>
-    </nav>
-  </header>
+<body onload="loadDashboard()">
+<h1>觀看紀錄</h1>
 
-  <main class="container">
-    <section class="section">
-      <h2>輸入動畫紀錄</h2>
-      <label>選擇動畫
-        <select id="animeSelect"></select>
-      </label>
-      <label>選擇週次
-        <select id="weekSelect"></select>
-      </label>
-      <label>集數區間
-        <input id="startEp" type="number" min="1"> ~ <input id="endEp" type="number" min="1">
-        <button class="btn primary" onclick="addRange()">加入</button>
-      </label>
-      <ul id="rangeList"></ul>
-      <button class="btn primary" onclick="saveLog()">儲存本週紀錄</button>
-      <p id="msg"></p>
-    </section>
-  </main>
+
+<nav>
+<a href="index.html">新增</a>
+<a href="dashboard.html">紀錄</a>
+<a href="manage.html">管理</a>
+<a href="overview.html">總覽</a>
+</nav>
+
+
+<table>
+<thead>
+<tr>
+<th>名稱</th>
+<th>進度</th>
+<th>操作</th>
+</tr>
+</thead>
+<tbody id="animeList"></tbody>
+</table>
+
+
+<script src="app.js"></script>
 </body>
 </html>
