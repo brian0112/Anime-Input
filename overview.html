@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <title>統計總覽</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        :root { --brand: #38bdf8; } /* 定義品牌色給圖表用 */
+    </style>
 </head>
 <body>
     <nav>
@@ -13,25 +16,37 @@
         <a href="overview.html" class="active">總覽</a>
     </nav>
 
-    <div class="container" id="overviewStats">
-        <h1>數據統計</h1>
-        <div class="grid">
-            <div class="glass-card" style="text-align:center;">
-                <h3 style="color:var(--text-secondary)">追番總數</h3>
-                <div id="valTotal" style="font-size:3rem; font-weight:bold; color:var(--accent-color)">0</div>
+    <div class="container">
+        <h1>儀表板</h1>
+        
+        <div class="grid" style="grid-template-columns: 1fr 2fr; margin-bottom: 30px;">
+            <div class="glass-card" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                <h3 style="margin-bottom:20px;">總體進度</h3>
+                <div id="pieChart" class="pie-chart">
+                    <div id="pieText" class="pie-inner">0%</div>
+                </div>
             </div>
-            <div class="glass-card" style="text-align:center;">
-                <h3 style="color:var(--text-secondary)">總集數</h3>
-                <div id="valEp" style="font-size:3rem; font-weight:bold;">0</div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="glass-card" style="text-align:center; display:flex; flex-direction:column; justify-content:center;">
+                    <h3 style="color:var(--text-secondary)">追番總數</h3>
+                    <div id="valTotal" style="font-size:2.5rem; font-weight:bold; color:var(--accent-color)">0</div>
+                </div>
+                <div class="glass-card" style="text-align:center; display:flex; flex-direction:column; justify-content:center;">
+                    <h3 style="color:var(--text-secondary)">總集數</h3>
+                    <div id="valEp" style="font-size:2.5rem; font-weight:bold;">0</div>
+                </div>
+                <div class="glass-card" style="text-align:center; display:flex; flex-direction:column; justify-content:center; grid-column: 1 / -1;">
+                    <h3 style="color:var(--text-secondary)">已觀看總集數</h3>
+                    <div id="valWatched" style="font-size:2.5rem; font-weight:bold; color:var(--success-color)">0</div>
+                </div>
             </div>
-            <div class="glass-card" style="text-align:center;">
-                <h3 style="color:var(--text-secondary)">已觀看集數</h3>
-                <div id="valWatched" style="font-size:3rem; font-weight:bold; color:var(--success-color)">0</div>
-            </div>
-            <div class="glass-card" style="text-align:center;">
-                <h3 style="color:var(--text-secondary)">整體進度</h3>
-                <div id="valRate" style="font-size:3rem; font-weight:bold;">0%</div>
-            </div>
+        </div>
+
+        <div class="glass-card">
+            <h3>🕒 近期活動日誌</h3>
+            <div id="activityList">
+                </div>
         </div>
     </div>
     <script src="app.js"></script>
