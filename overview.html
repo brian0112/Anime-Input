@@ -1,29 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
-<title>總覽統計</title>
-<link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <title>統計總覽 - Anime Input</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body onload="loadOverview()">
-<h1>統計總覽</h1>
+<body>
+    <nav>
+        <a href="index.html">新增</a>
+        <a href="dashboard.html">紀錄</a>
+        <a href="manage.html">管理</a>
+        <a href="overview.html" class="active">總覽</a>
+    </nav>
 
-
-<nav>
-<a href="index.html">新增</a>
-<a href="dashboard.html">紀錄</a>
-<a href="manage.html">管理</a>
-<a href="overview.html">總覽</a>
-</nav>
-
-
-<div class="stats-box">
-<p>總動畫數：<span id="statTotal">0</span></p>
-<p>總集數：<span id="statEpisodes">0</span></p>
-<p>已觀看：<span id="statWatched">0</span></p>
-</div>
-
-
-<script src="app.js"></script>
+    <div class="container">
+        <h1>數據統計</h1>
+        <div class="grid">
+            <div class="glass-card" style="text-align:center;">
+                <h3 style="color:var(--text-secondary)">追番總數</h3>
+                <div id="statTotal" style="font-size:3rem; font-weight:bold; color:var(--accent-color)">0</div>
+            </div>
+            <div class="glass-card" style="text-align:center;">
+                <h3 style="color:var(--text-secondary)">總集數</h3>
+                <div id="statEpisodes" style="font-size:3rem; font-weight:bold;">0</div>
+            </div>
+            <div class="glass-card" style="text-align:center;">
+                <h3 style="color:var(--text-secondary)">已觀看集數</h3>
+                <div id="statWatched" style="font-size:3rem; font-weight:bold; color:var(--success-color)">0</div>
+            </div>
+            <div class="glass-card" style="text-align:center;">
+                <h3 style="color:var(--text-secondary)">整體進度</h3>
+                <div id="statRate" style="font-size:3rem; font-weight:bold;">0%</div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
 </body>
 </html>
