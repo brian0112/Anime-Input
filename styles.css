@@ -1,4 +1,4 @@
-/* styles.css */
+/* styles.css - V6.1 完整版 */
 :root {
   --bg-color: #0f172a;
   --glass-bg: rgba(30, 41, 59, 0.7);
@@ -10,9 +10,8 @@
   --success-color: #4ade80;
 }
 
-/* 全域設定：這是解決輸入框跑版的關鍵 */
 *, *::before, *::after {
-  box-sizing: border-box; 
+  box-sizing: border-box;
 }
 
 body {
@@ -33,6 +32,7 @@ body {
   padding: 20px;
 }
 
+/* 導覽列 */
 nav {
   display: flex;
   justify-content: center;
@@ -62,12 +62,13 @@ nav a:hover, nav a.active {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
 }
 
+/* 卡片與網格 */
 .glass-card {
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  padding: 30px; /* 增加一點內距 */
+  padding: 30px;
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
 }
 
@@ -77,9 +78,9 @@ nav a:hover, nav a.active {
   gap: 25px;
 }
 
-/* Form Elements - 確保寬度不會撐開 */
+/* 表單元件 */
 input, select, button {
-  width: 100%; 
+  width: 100%;
   padding: 12px;
   margin-top: 8px;
   margin-bottom: 20px;
@@ -102,7 +103,7 @@ button {
   border: none;
   font-weight: bold;
   cursor: pointer;
-  margin-bottom: 0; /* 修正按鈕底部間距 */
+  margin-bottom: 0;
 }
 
 button:hover {
@@ -123,6 +124,7 @@ button.outline:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* 圖片與標籤 */
 .anime-cover {
   width: 100%;
   height: 180px;
@@ -142,6 +144,7 @@ button.outline:hover {
   margin-bottom: 8px;
 }
 
+/* ===== 彈窗 Modal ===== */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -203,19 +206,7 @@ button.outline:hover {
   justify-content: flex-end;
 }
 
-/* 歷史紀錄列表樣式 */
-.history-item {
-  background: rgba(0,0,0,0.2);
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
-/* ===== 總覽頁面圖表樣式 ===== */
+/* ===== 圖表樣式 ===== */
 .chart-container {
     display: flex;
     justify-content: center;
@@ -227,7 +218,6 @@ button.outline:hover {
     width: 150px;
     height: 150px;
     border-radius: 50%;
-    /* 這裡的 background 會被 JS 動態覆蓋 */
     background: conic-gradient(var(--accent-color) 0% 0%, rgba(255,255,255,0.1) 0% 100%);
     display: flex;
     justify-content: center;
@@ -239,7 +229,7 @@ button.outline:hover {
 .pie-inner {
     width: 120px;
     height: 120px;
-    background: #1e293b; /* 配合卡片背景色 */
+    background: #1e293b;
     border-radius: 50%;
     display: flex;
     justify-content: center;
@@ -249,7 +239,6 @@ button.outline:hover {
     color: var(--text-primary);
 }
 
-/* 上傳按鈕樣式 */
 .file-upload {
     display: inline-block;
     padding: 10px 20px;
@@ -267,21 +256,19 @@ button.outline:hover {
     color: var(--accent-color);
 }
 
-/* ===== V6.0 新增樣式 ===== */
-
-/* 小型按鈕 (用於列表右側) */
+/* ===== V6.1 新增：小型按鈕與歷史列表優化 ===== */
 .btn-sm {
-  width: auto !important; /* 強制取消 100% 寬度 */
-  padding: 6px 15px;      /* 縮小內距 */
-  font-size: 0.9rem;      /* 字體稍微縮小 */
-  margin: 0;              /* 移除多餘邊距 */
-  align-self: center;     /* 確保垂直置中 */
+  width: auto !important; /* 強制不滿版 */
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  margin: 0;
+  flex-shrink: 0;
 }
 
-/* 針對歷史紀錄彈窗的列表樣式微調 */
 .history-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px; /* 增加一點呼吸感 */
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
