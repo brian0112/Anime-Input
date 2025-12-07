@@ -272,3 +272,82 @@ button.outline:hover {
   padding: 12px 0;
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
+
+/* ===== V7.0 新增：熱力圖樣式 ===== */
+.heatmap-section {
+  overflow-x: auto; /* 讓手機版可以左右滑動 */
+  padding-bottom: 10px;
+}
+
+.heatmap-container {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr); /* 一週 7 天，垂直排列 */
+  grid-auto-flow: column; /* 讓格子往右邊長 */
+  gap: 4px;
+  height: 120px;
+  width: max-content; /* 寬度根據格子數量自動延伸 */
+}
+
+.day-square {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background-color: rgba(255, 255, 255, 0.05); /* 預設顏色 (沒看) */
+  transition: all 0.2s;
+}
+
+.day-square:hover {
+  transform: scale(1.4);
+  border: 1px solid #fff;
+  z-index: 10;
+}
+
+/* 顏色等級 (參考 GitHub 風格) */
+.level-0 { background-color: rgba(255, 255, 255, 0.05); }
+.level-1 { background-color: #0e4429; } /* 極少 */
+.level-2 { background-color: #006d32; } /* 少 */
+.level-3 { background-color: #26a641; } /* 中 */
+.level-4 { background-color: #39d353; box-shadow: 0 0 5px #39d353; } /* 多 */
+
+/* 提示框樣式 (Tooltip) */
+.day-square[title] {
+  cursor: pointer;
+  position: relative;
+}
+
+/* styles.css - 修改 Heatmap 相關樣式 */
+.heatmap-section {
+  overflow-x: auto;
+  padding: 10px 0;
+}
+
+/* 改為單列橫向排列 */
+.heatmap-container {
+  display: flex; /* 使用 Flex 讓它橫排 */
+  gap: 6px;      /* 格子間距 */
+  padding: 5px;
+  width: max-content;
+}
+
+/* 格子變成長條形，更有「週」的感覺 */
+.day-square {
+  width: 14px;   /* 稍微寬一點 */
+  height: 40px;  /* 變成直條狀 */
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+  transition: all 0.2s;
+  position: relative; /* 為了 Tooltip */
+}
+
+.day-square:hover {
+  transform: scaleY(1.2); /* hover 時變長 */
+  border: 1px solid #fff;
+  z-index: 10;
+}
+
+/* 顏色等級調整 (因為週總數會比日總數大) */
+.level-0 { background-color: rgba(255, 255, 255, 0.05); }
+.level-1 { background-color: #0e4429; } /* 1-5 集 */
+.level-2 { background-color: #006d32; } /* 6-12 集 */
+.level-3 { background-color: #26a641; } /* 13-20 集 */
+.level-4 { background-color: #39d353; box-shadow: 0 0 8px #39d353; } /* 20+ 集 */

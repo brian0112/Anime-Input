@@ -358,6 +358,66 @@ function generateCSV() {
     document.body.removeChild(link);
 }
 
+// ===== V7.0 熱力圖渲染邏輯 =====
+function renderHeatmap() {
+    const container = document.getElementById('heatmap');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const data = loadData();
+    
+    // 1. 建立「週次索引」 (Week Map)
+    // 格式: { "12/01~12/07": 15, "12/08~12/14": 5 }
+    const weekCounts = {};
+    
+    data.forEach(anime => {
+        anime.history.forEach(h => {
+            // h.week 已經是 "MM/DD~MM/DD" 的格式，直接當 key 用
+            if (!weekCounts[h.week]) weekCounts[h.week] = 0;
+            weekCounts[h.week] += h.count;
+        });
+    });
+
+    // 2. 生成過去 52 週的格子
+    const now = new Date();
+    // 找到本週的週一 (定位錨點)
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day == 0 ? -6 : 1); 
+    const currentMonday = new Date(now.setDate(diff));
+
+    // 迴圈 52 次 (一年)
+    // 為了讓舊的在左邊，新的在右邊，我們用陣列存起來再反轉，或是直接從 -51 數到 0
+    for (let i = 51; i >= 0; i--) {
+        // 計算該週的週一與週日
+        let tempMon = new Date(currentMonday);
+        tempMon.setDate(currentMonday.getDate() - (i * 7));
+        
+        let tempSun = new Date(tempMon);
+        tempSun.setDate(tempMon.getDate() + 6);
+
+        // 格式化成與資料庫一致的字串 "MM/DD~MM/DD"
+        const fmt = d => `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+        const weekStr = `${fmt(tempMon)}~${fmt(tempSun)}`;
+        
+        const count = weekCounts[weekStr] || 0;
+
+        // 3. 決定顏色等級 (根據週觀看量調整標準)
+        let level = 'level-0';
+        if (count > 0) level = 'level-1';
+        if (count > 5) level = 'level-2';  // 一週看 5 集以上
+        if (count > 12) level = 'level-3'; // 一週看 12 集以上
+        if (count > 20) level = 'level-4'; // 一週看 20 集以上 (狂熱)
+
+        // 4. 建立 HTML
+        const square = document.createElement('div');
+        square.className = `day-square ${level}`;
+        
+        // Tooltip 顯示週次與集數
+        square.title = `${weekStr}: 共 ${count} 集`;
+        
+        container.appendChild(square);
+    }
+}
 // ===== 4. 總覽頁面 (Overview) =====
 function loadOverview() {
     const data = loadData();
@@ -429,6 +489,7 @@ function loadOverview() {
             });
         }
     }
+    renderHeatmap(); 
 }
 
 // ===== 初始化 =====
