@@ -314,3 +314,40 @@ button.outline:hover {
   cursor: pointer;
   position: relative;
 }
+
+/* styles.css - 修改 Heatmap 相關樣式 */
+.heatmap-section {
+  overflow-x: auto;
+  padding: 10px 0;
+}
+
+/* 改為單列橫向排列 */
+.heatmap-container {
+  display: flex; /* 使用 Flex 讓它橫排 */
+  gap: 6px;      /* 格子間距 */
+  padding: 5px;
+  width: max-content;
+}
+
+/* 格子變成長條形，更有「週」的感覺 */
+.day-square {
+  width: 14px;   /* 稍微寬一點 */
+  height: 40px;  /* 變成直條狀 */
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+  transition: all 0.2s;
+  position: relative; /* 為了 Tooltip */
+}
+
+.day-square:hover {
+  transform: scaleY(1.2); /* hover 時變長 */
+  border: 1px solid #fff;
+  z-index: 10;
+}
+
+/* 顏色等級調整 (因為週總數會比日總數大) */
+.level-0 { background-color: rgba(255, 255, 255, 0.05); }
+.level-1 { background-color: #0e4429; } /* 1-5 集 */
+.level-2 { background-color: #006d32; } /* 6-12 集 */
+.level-3 { background-color: #26a641; } /* 13-20 集 */
+.level-4 { background-color: #39d353; box-shadow: 0 0 8px #39d353; } /* 20+ 集 */
