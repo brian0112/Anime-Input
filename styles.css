@@ -1,4 +1,6 @@
-/* styles.css - V6.1 完整版 */
+/* styles.css - V7.1 完整修正版 */
+
+/* ===== 1. 全域設定與變數 ===== */
 :root {
   --bg-color: #0f172a;
   --glass-bg: rgba(30, 41, 59, 0.7);
@@ -32,7 +34,7 @@ body {
   padding: 20px;
 }
 
-/* 導覽列 */
+/* ===== 2. 導覽列 ===== */
 nav {
   display: flex;
   justify-content: center;
@@ -62,7 +64,7 @@ nav a:hover, nav a.active {
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
 }
 
-/* 卡片與網格 */
+/* ===== 3. 卡片與排版 ===== */
 .glass-card {
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
@@ -78,12 +80,13 @@ nav a:hover, nav a.active {
   gap: 25px;
 }
 
-/* 表單元件 */
+/* ===== 4. 表單與按鈕 ===== */
+/* 全域表單元件設定 */
 input, select, button {
   width: 100%;
   padding: 12px;
   margin-top: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 20px; /* 這是導致按鈕沒對齊的主因，下面會修正 */
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--glass-border);
   border-radius: 8px;
@@ -103,7 +106,6 @@ button {
   border: none;
   font-weight: bold;
   cursor: pointer;
-  margin-bottom: 0;
 }
 
 button:hover {
@@ -124,7 +126,18 @@ button.outline:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* 圖片與標籤 */
+/* ★★★ 修復：小型按鈕與列表按鈕的對齊問題 ★★★ */
+.btn-sm,
+.history-item button,
+#manageList button {
+  width: auto !important; /* 不佔滿整行 */
+  padding: 6px 15px;      /* 縮小內距 */
+  font-size: 0.9rem;
+  margin: 0 !important;   /* 關鍵！強制移除上下的間距，讓它能垂直置中 */
+  align-self: center;
+}
+
+/* ===== 5. 圖片與標籤 ===== */
 .anime-cover {
   width: 100%;
   height: 180px;
@@ -144,7 +157,7 @@ button.outline:hover {
   margin-bottom: 8px;
 }
 
-/* ===== 彈窗 Modal ===== */
+/* ===== 6. 彈窗 Modal ===== */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -206,7 +219,26 @@ button.outline:hover {
   justify-content: flex-end;
 }
 
-/* ===== 圖表樣式 ===== */
+/* ===== 7. 列表項目樣式 (歷史紀錄/管理頁面) ===== */
+.history-item, 
+#manageList > .glass-card {
+  display: flex;
+  justify-content: space-between; /* 內容左右撐開 */
+  align-items: center;            /* 關鍵：垂直置中 */
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  gap: 15px;
+}
+
+/* 針對管理頁面的特殊調整 */
+#manageList > .glass-card {
+  padding: 15px 20px;
+  border: 1px solid var(--glass-border);
+  margin-bottom: 15px;
+}
+
+
+/* ===== 8. 圖表與熱力圖 ===== */
 .chart-container {
     display: flex;
     justify-content: center;
@@ -239,6 +271,46 @@ button.outline:hover {
     color: var(--text-primary);
 }
 
+/* ★★★ 修復：熱力圖置中 ★★★ */
+.heatmap-section {
+  overflow-x: auto;
+  padding: 10px 0;
+  display: flex;             /* 關鍵 */
+  justify-content: center;   /* 關鍵 */
+}
+
+/* 熱力圖容器 (週單位橫向) */
+.heatmap-container {
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  width: max-content;
+}
+
+/* 熱力圖格子 (直條狀) */
+.day-square {
+  width: 14px;
+  height: 40px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.05);
+  transition: all 0.2s;
+  position: relative;
+}
+
+.day-square:hover {
+  transform: scaleY(1.2);
+  border: 1px solid #fff;
+  z-index: 10;
+}
+
+/* 熱力圖顏色等級 */
+.level-0 { background-color: rgba(255, 255, 255, 0.05); }
+.level-1 { background-color: #0e4429; }
+.level-2 { background-color: #006d32; }
+.level-3 { background-color: #26a641; }
+.level-4 { background-color: #39d353; box-shadow: 0 0 8px #39d353; }
+
+/* 檔案上傳按鈕美化 */
 .file-upload {
     display: inline-block;
     padding: 10px 20px;
@@ -250,151 +322,31 @@ button.outline:hover {
     transition: 0.3s;
     text-align: center;
     width: 100%;
+    margin-top: 8px;
 }
 .file-upload:hover {
     background: rgba(56, 189, 248, 0.1);
     color: var(--accent-color);
 }
 
-/* ===== V6.1 新增：小型按鈕與歷史列表優化 ===== */
-.btn-sm {
-  width: auto !important; /* 強制不滿版 */
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  margin: 0;
-  flex-shrink: 0;
-}
-
-/* 修改 2: 列表項目的對齊優化 (針對 activityList 和 manageList) */
-/* 請確保 .history-item 和管理頁面的列表項目都有吃到這個設定 */
-.history-item, 
-#manageList > .glass-card { /* 或是給管理列表的項目一個 class */
-  display: flex;
-  justify-content: space-between; /* 左右撐開 */
-  align-items: center; /* 關鍵：垂直置中 */
-  gap: 10px; /* 避免文字跟按鈕黏太近 */
-}
-
-.btn-sm,
-.history-item button,
-#manageList button {
-  margin-bottom: 0 !important; /* 關鍵！拿掉那個隱形的 20px */
-  margin-top: 0;
-}
-
-/* ===== V7.0 新增：熱力圖樣式 ===== */
-.heatmap-section {
-  overflow-x: auto; /* 讓手機版可以左右滑動 */
-  padding-bottom: 10px;
-  display: flex;
-  justify-content: center;
-}
-
-.heatmap-container {
-  display: grid;
-  grid-template-rows: repeat(7, 1fr); /* 一週 7 天，垂直排列 */
-  grid-auto-flow: column; /* 讓格子往右邊長 */
-  gap: 4px;
-  height: 120px;
-  width: max-content; /* 寬度根據格子數量自動延伸 */
-}
-
-.day-square {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  background-color: rgba(255, 255, 255, 0.05); /* 預設顏色 (沒看) */
-  transition: all 0.2s;
-}
-
-.day-square:hover {
-  transform: scale(1.4);
-  border: 1px solid #fff;
-  z-index: 10;
-}
-
-/* 顏色等級 (參考 GitHub 風格) */
-.level-0 { background-color: rgba(255, 255, 255, 0.05); }
-.level-1 { background-color: #0e4429; } /* 極少 */
-.level-2 { background-color: #006d32; } /* 少 */
-.level-3 { background-color: #26a641; } /* 中 */
-.level-4 { background-color: #39d353; box-shadow: 0 0 5px #39d353; } /* 多 */
-
-/* 提示框樣式 (Tooltip) */
-.day-square[title] {
-  cursor: pointer;
-  position: relative;
-}
-
-/* styles.css - 修改 Heatmap 相關樣式 */
-.heatmap-section {
-  overflow-x: auto;
-  padding: 10px 0;
-}
-
-/* 改為單列橫向排列 */
-.heatmap-container {
-  display: flex; /* 使用 Flex 讓它橫排 */
-  gap: 6px;      /* 格子間距 */
-  padding: 5px;
-  width: max-content;
-}
-
-/* 格子變成長條形，更有「週」的感覺 */
-.day-square {
-  width: 14px;   /* 稍微寬一點 */
-  height: 40px;  /* 變成直條狀 */
-  border-radius: 4px;
-  background-color: rgba(255, 255, 255, 0.05);
-  transition: all 0.2s;
-  position: relative; /* 為了 Tooltip */
-}
-
-.day-square:hover {
-  transform: scaleY(1.2); /* hover 時變長 */
-  border: 1px solid #fff;
-  z-index: 10;
-}
-
-/* 顏色等級調整 (因為週總數會比日總數大) */
-.level-0 { background-color: rgba(255, 255, 255, 0.05); }
-.level-1 { background-color: #0e4429; } /* 1-5 集 */
-.level-2 { background-color: #006d32; } /* 6-12 集 */
-.level-3 { background-color: #26a641; } /* 13-20 集 */
-.level-4 { background-color: #39d353; box-shadow: 0 0 8px #39d353; } /* 20+ 集 */
-
-/* ===== 手機版專用設定 (當螢幕小於 768px 時生效) ===== */
+/* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
 @media (max-width: 768px) {
   
-  /* 1. 讓小型按鈕 (.btn-sm) 在手機上變回好按的大按鈕 */
-  .btn-sm {
-    width: auto !important; /* 或者改回 100% 讓它變長條 */
-    padding: 10px 20px;     /* 增加觸控面積 */
-    font-size: 1rem;        /* 字體變大 */
-  }
-
-  /* 2. 針對歷史紀錄列表，手機版改為垂直排列 (讓按鈕好按) */
-  .history-item {
-    flex-direction: column; /* 改為上下排列 */
-    align-items: flex-start; /* 靠左對齊 */
-    gap: 10px;
-  }
-  
-  /* 讓刪除按鈕在手機版佔滿寬度，防止誤觸其他地方 */
-  .history-item button {
+  /* 讓小型按鈕在手機上變回好按的大按鈕 */
+  .btn-sm,
+  .history-item button,
+  #manageList button {
     width: 100% !important;
-    margin-top: 5px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    margin-top: 10px !important; /* 手機版需要上面有一點距離 */
   }
 
-  /* 3. 管理頁面的列表也比照辦理 */
+  /* 列表項目改為垂直排列 */
+  .history-item,
   #manageList > .glass-card {
     flex-direction: column;
-    align-items: stretch; /* 讓子元素撐滿寬度 */
+    align-items: stretch; /* 撐滿寬度 */
     text-align: center;
-  }
-  
-  #manageList button {
-    margin-top: 10px;
-    width: 100% !important;
   }
 }
