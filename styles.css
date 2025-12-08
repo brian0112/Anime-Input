@@ -265,18 +265,22 @@ button.outline:hover {
   flex-shrink: 0;
 }
 
-.history-item {
+/* 修改 2: 列表項目的對齊優化 (針對 activityList 和 manageList) */
+/* 請確保 .history-item 和管理頁面的列表項目都有吃到這個設定 */
+.history-item, 
+#manageList > .glass-card { /* 或是給管理列表的項目一個 class */
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  justify-content: space-between; /* 左右撐開 */
+  align-items: center; /* 關鍵：垂直置中 */
+  gap: 10px; /* 避免文字跟按鈕黏太近 */
 }
 
 /* ===== V7.0 新增：熱力圖樣式 ===== */
 .heatmap-section {
   overflow-x: auto; /* 讓手機版可以左右滑動 */
   padding-bottom: 10px;
+  display: flex;
+  justify-content: center;
 }
 
 .heatmap-container {
@@ -351,3 +355,39 @@ button.outline:hover {
 .level-2 { background-color: #006d32; } /* 6-12 集 */
 .level-3 { background-color: #26a641; } /* 13-20 集 */
 .level-4 { background-color: #39d353; box-shadow: 0 0 8px #39d353; } /* 20+ 集 */
+
+/* ===== 手機版專用設定 (當螢幕小於 768px 時生效) ===== */
+@media (max-width: 768px) {
+  
+  /* 1. 讓小型按鈕 (.btn-sm) 在手機上變回好按的大按鈕 */
+  .btn-sm {
+    width: auto !important; /* 或者改回 100% 讓它變長條 */
+    padding: 10px 20px;     /* 增加觸控面積 */
+    font-size: 1rem;        /* 字體變大 */
+  }
+
+  /* 2. 針對歷史紀錄列表，手機版改為垂直排列 (讓按鈕好按) */
+  .history-item {
+    flex-direction: column; /* 改為上下排列 */
+    align-items: flex-start; /* 靠左對齊 */
+    gap: 10px;
+  }
+  
+  /* 讓刪除按鈕在手機版佔滿寬度，防止誤觸其他地方 */
+  .history-item button {
+    width: 100% !important;
+    margin-top: 5px;
+  }
+
+  /* 3. 管理頁面的列表也比照辦理 */
+  #manageList > .glass-card {
+    flex-direction: column;
+    align-items: stretch; /* 讓子元素撐滿寬度 */
+    text-align: center;
+  }
+  
+  #manageList button {
+    margin-top: 10px;
+    width: 100% !important;
+  }
+}
