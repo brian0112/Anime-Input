@@ -275,6 +275,13 @@ button.outline:hover {
   gap: 10px; /* 避免文字跟按鈕黏太近 */
 }
 
+.btn-sm,
+.history-item button,
+#manageList button {
+  margin-bottom: 0 !important; /* 關鍵！拿掉那個隱形的 20px */
+  margin-top: 0;
+}
+
 /* ===== V7.0 新增：熱力圖樣式 ===== */
 .heatmap-section {
   overflow-x: auto; /* 讓手機版可以左右滑動 */
