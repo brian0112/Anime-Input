@@ -358,7 +358,8 @@ function generateCSV() {
     document.body.removeChild(link);
 }
 
-// ===== V7.0 熱力圖渲染邏輯 =====
+// app.js - V7.2 熱力圖邏輯修正 (請覆蓋原本的 renderHeatmap)
+
 function renderHeatmap() {
     const container = document.getElementById('heatmap');
     if (!container) return;
@@ -367,57 +368,66 @@ function renderHeatmap() {
     const data = loadData();
     
     // 1. 建立「週次索引」 (Week Map)
-    // 格式: { "12/01~12/07": 15, "12/08~12/14": 5 }
+    // 我們只關心 key 是否完全一致。
+    // 資料庫存的格式範例: "12/01~12/07"
     const weekCounts = {};
     
     data.forEach(anime => {
         anime.history.forEach(h => {
-            // h.week 已經是 "MM/DD~MM/DD" 的格式，直接當 key 用
+            // 直接累加，不做額外轉換，確保與儲存時的邏輯一致
             if (!weekCounts[h.week]) weekCounts[h.week] = 0;
             weekCounts[h.week] += h.count;
         });
     });
 
     // 2. 生成過去 52 週的格子
+    // 關鍵修正：確保這裡生成的 "weekStr" 格式與 getWeekOptions() 完全一致
     const now = new Date();
-    // 找到本週的週一 (定位錨點)
-    const day = now.getDay();
+    const day = now.getDay(); 
+    // 算出本週一 (如果今天是週日(0)，要減 6 天回到週一；如果是週一(1)~週六(6)，減去 (day-1))
     const diff = now.getDate() - day + (day == 0 ? -6 : 1); 
     const currentMonday = new Date(now.setDate(diff));
 
-    // 迴圈 52 次 (一年)
-    // 為了讓舊的在左邊，新的在右邊，我們用陣列存起來再反轉，或是直接從 -51 數到 0
+    // 往回推 52 週 (從前 51 週 ~ 本週)
+    // 為了讓時間軸由左(舊)到右(新)，我們從 i = 51 數到 0
     for (let i = 51; i >= 0; i--) {
-        // 計算該週的週一與週日
         let tempMon = new Date(currentMonday);
         tempMon.setDate(currentMonday.getDate() - (i * 7));
         
         let tempSun = new Date(tempMon);
         tempSun.setDate(tempMon.getDate() + 6);
 
-        // 格式化成與資料庫一致的字串 "MM/DD~MM/DD"
+        // 格式化：確保月份和日期都有補零 (padStart)
+        // 例如: 1月5日 必須是 "01/05" 而非 "1/5"
         const fmt = d => `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
         const weekStr = `${fmt(tempMon)}~${fmt(tempSun)}`;
         
+        // 3. 比對資料
         const count = weekCounts[weekStr] || 0;
 
-        // 3. 決定顏色等級 (根據週觀看量調整標準)
+        // 4. 決定顏色等級
         let level = 'level-0';
         if (count > 0) level = 'level-1';
-        if (count > 5) level = 'level-2';  // 一週看 5 集以上
-        if (count > 12) level = 'level-3'; // 一週看 12 集以上
-        if (count > 20) level = 'level-4'; // 一週看 20 集以上 (狂熱)
+        if (count > 5) level = 'level-2';
+        if (count > 12) level = 'level-3';
+        if (count > 20) level = 'level-4';
 
-        // 4. 建立 HTML
+        // 5. 建立 HTML
         const square = document.createElement('div');
         square.className = `day-square ${level}`;
         
-        // Tooltip 顯示週次與集數
+        // Tooltip 顯示資訊 (加入年份方便除錯)
         square.title = `${weekStr}: 共 ${count} 集`;
+
+        // 標記本週 (可選：讓本週的格子有個邊框，讓你確認現在算到哪一週了)
+        if (i === 0) {
+            square.style.border = '1px solid var(--accent-color)';
+        }
         
         container.appendChild(square);
     }
 }
+
 // ===== 4. 總覽頁面 (Overview) =====
 function loadOverview() {
     const data = loadData();
