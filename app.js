@@ -242,6 +242,7 @@ function loadManage() {
     data.forEach(anime => {
         const item = document.createElement('div');
         item.className = 'glass-card';
+        // 手機版樣式相容性保留
         item.style.marginBottom = '15px';
         item.style.padding = '15px 20px';
         item.style.display = 'flex';
@@ -249,8 +250,11 @@ function loadManage() {
         item.style.alignItems = 'center';
         
         item.innerHTML = `
-            <div style="font-weight:500;">${anime.title}</div>
-            <button class="danger btn-sm" onclick="deleteAnime(${anime.id})">刪除</button>
+            <div style="font-weight:500; flex:1;">${anime.title}</div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-sm" style="background:var(--accent-color); color:var(--bg-color);" onclick="openEditModal(${anime.id})">編輯</button>
+                <button class="danger btn-sm" onclick="deleteAnime(${anime.id})">刪除</button>
+            </div>
         `;
         list.appendChild(item);
     });
@@ -500,6 +504,71 @@ function loadOverview() {
         }
     }
     renderHeatmap(); 
+}
+
+// app.js - V8.0 新增功能
+
+// ===== 搜尋功能 (Dashboard) =====
+function searchAnime() {
+    const input = document.getElementById('searchInput');
+    const filter = input.value.toUpperCase();
+    const grid = document.getElementById('animeGrid');
+    const cards = grid.getElementsByClassName('glass-card');
+
+    for (let i = 0; i < cards.length; i++) {
+        // 抓取卡片內的標題 (h3)
+        const title = cards[i].getElementsByTagName("h3")[0];
+        if (title) {
+            const txtValue = title.textContent || title.innerText;
+            // 如果搜尋關鍵字存在於標題中，就顯示，否則隱藏
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                cards[i].style.display = "";
+            } else {
+                cards[i].style.display = "none";
+            }
+        }
+    }
+}
+
+// ===== 編輯功能 (Manage) =====
+let editingAnimeId = null;
+
+// 1. 開啟編輯視窗 (需修改 loadManage 裡的按鈕來呼叫此函式)
+function openEditModal(id) {
+    const data = loadData();
+    const anime = data.find(a => a.id === id);
+    if (!anime) return;
+
+    editingAnimeId = id;
+    document.getElementById('editTitle').value = anime.title;
+    document.getElementById('editTotal').value = anime.total;
+    document.getElementById('editImgUrl').value = anime.image;
+
+    document.getElementById('editModal').classList.add('active');
+}
+
+// 2. 提交編輯
+function submitEdit() {
+    const newTitle = document.getElementById('editTitle').value.trim();
+    const newTotal = parseInt(document.getElementById('editTotal').value);
+    const newImg = document.getElementById('editImgUrl').value.trim();
+
+    if (!newTitle || newTotal <= 0) return alert('請輸入有效資料');
+
+    const data = loadData();
+    const index = data.findIndex(a => a.id === editingAnimeId);
+    
+    if (index !== -1) {
+        // 更新資料 (保留原本的 history 和 id)
+        data[index].title = newTitle;
+        data[index].total = newTotal;
+        data[index].image = newImg || 'https://placehold.co/600x400/1e293b/FFF?text=No+Image';
+        
+        saveData(data);
+        alert('修改已儲存！');
+        closeModal('editModal');
+        loadManage(); // 重新整理列表
+    }
 }
 
 // ===== 初始化 =====
