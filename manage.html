@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <title>管理資料 - Anime Input</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f172a">
 </head>
 <body>
     <nav>
@@ -45,10 +43,35 @@
         </div>
 
         <div class="glass-card">
-            <h3>刪除動畫</h3>
+            <h3>管理動畫清單</h3>
             <div id="manageList"></div>
         </div>
-    </div>
-    <script src="app.js"></script>
+
+        <div id="editModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">編輯動畫資訊</div>
+                
+                <div class="form-group">
+                    <label>動畫名稱</label>
+                    <input type="text" id="editTitle">
+                </div>
+
+                <div class="form-group">
+                    <label>總集數</label>
+                    <input type="number" id="editTotal" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label>封面圖片網址</label>
+                    <input type="url" id="editImgUrl">
+                </div>
+
+                <div class="modal-actions">
+                    <button class="outline" onclick="closeModal('editModal')">取消</button>
+                    <button onclick="submitEdit()">儲存修改</button>
+                </div>
+            </div>
+        </div>
+        </div> <script src="app.js"></script>
 </body>
 </html>
