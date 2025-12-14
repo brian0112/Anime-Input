@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>紀錄平台 - Anime Input</title>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="manifest" href="manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f172a">
+    
+    <title>新增作品 - Anime Input</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
     <nav>
@@ -14,7 +15,7 @@
         <a href="dashboard.html">紀錄</a>
         <a href="manage.html">管理</a>
         <a href="overview.html">總覽</a>
-        
+
         <div class="login-container">
             <span id="userInfo" style="font-size: 0.9rem; color: var(--accent-color);"></span>
             <button id="loginBtn" onclick="googleLogin()" class="btn-sm" style="background: var(--text-primary); color: var(--bg-color);">
@@ -28,33 +29,62 @@
 
     <div class="container">
         <div class="glass-card" style="max-width: 600px; margin: 0 auto;">
-            <h2 style="text-align:center; margin-bottom:30px;">新增作品</h2>
+            <h2 style="text-align: center; margin-bottom: 30px; color: var(--text-primary);">新增作品</h2>
             
             <form onsubmit="addAnime(event)">
-                <label>作品名稱</label>
-                <input id="title" type="text" required placeholder="例如：膽大黨">
+                
+                <div class="form-group">
+                    <label>作品名稱</label>
+                    <div class="input-group">
+                        <input type="text" id="title" placeholder="例如: 葬送的芙莉蓮" required>
+                        <button type="button" onclick="searchBangumi()" class="btn-search">
+                            🔍 搜尋
+                        </button>
+                    </div>
+                    <small style="color:var(--text-secondary); margin-top:5px; display:block; font-size: 0.85rem;">
+                        輸入關鍵字後點擊搜尋，可自動填寫資料。
+                    </small>
+                </div>
 
-                <label>總集數</label>
-                <input id="total" type="number" min="1" required placeholder="12">
+                <div class="form-group">
+                    <label>總集數</label>
+                    <input type="number" id="total" min="1" placeholder="12" required>
+                </div>
 
-                <label>封面圖片網址 (選填)</label>
-                <input id="imgUrl" type="url" placeholder="圖片連結...">
+                <div class="form-group">
+                    <label>封面圖片網址 (選填)</label>
+                    <input type="url" id="imgUrl" placeholder="圖片連結...">
+                </div>
 
-                <button type="submit">加入清單</button>
+                <button type="submit" style="width: 100%; margin-top: 20px;">加入清單</button>
             </form>
         </div>
     </div>
-    <script>
-  // 註冊 PWA Service Worker
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then((reg) => console.log('Service Worker 註冊成功:', reg.scope))
-        .catch((err) => console.log('Service Worker 註冊失敗:', err));
-    });
-  }
-</script>
+
+    <div id="searchModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 800px; width: 90%;">
+            <div class="modal-header">
+                搜尋結果 (來源: Bangumi)
+                <button type="button" class="btn-close" onclick="closeModal('searchModal')">×</button>
+            </div>
+            
+            <div id="searchResults" class="search-grid"></div>
+
+            <div class="modal-actions">
+                <button type="button" class="outline" onclick="closeModal('searchModal')">關閉</button>
+            </div>
+        </div>
+    </div>
+
     <script type="module" src="firebase-init.js"></script>
     <script src="app.js"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('SW registered!', reg))
+                .catch(err => console.log('SW failed', err));
+        }
+    </script>
 </body>
 </html>
