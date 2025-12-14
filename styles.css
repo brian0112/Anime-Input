@@ -37,13 +37,13 @@ body {
 /* ===== 2. 導覽列 ===== */
 nav {
   display: flex;
-  justify-content: center;
-  gap: 15px;
+  justify-content: center; /* 按鈕置中 */
+  align-items: center;
   padding: 15px;
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--glass-border);
-  position: sticky;
+  position: relative; /* 【關鍵】讓內部的絕對定位以此為基準 */
   top: 0;
   z-index: 100;
   margin-bottom: 30px;
@@ -62,6 +62,14 @@ nav a:hover, nav a.active {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.1);
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.login-container {
+  position: absolute; /* 強制脫離排版流，固定在右邊 */
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* ===== 3. 卡片與排版 ===== */
@@ -330,23 +338,47 @@ button.outline:hover {
 }
 
 /* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
+/* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
 @media (max-width: 768px) {
   
-  /* 讓小型按鈕在手機上變回好按的大按鈕 */
+  /* 1. 導覽列變為垂直排列 */
+  nav {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  /* 2. 登入區塊取消絕對定位，讓它自然流動 */
+  .login-container {
+    position: static; /* 手機版取消 absolute，讓它跟著排 */
+    margin-top: 10px;
+    width: 100%;       /* 讓區塊佔滿寬度 */
+    justify-content: center; /* 讓裡面的按鈕置中 */
+  }
+
+  /* 3. 讓小型按鈕在手機上變回好按的大按鈕 */
   .btn-sm,
   .history-item button,
   #manageList button {
     width: 100% !important;
     padding: 10px 20px;
     font-size: 1rem;
-    margin-top: 10px !important; /* 手機版需要上面有一點距離 */
+    margin-top: 10px !important; /* 手機版按鈕上方加點距離 */
+    margin-bottom: 0 !important;
   }
 
-  /* 列表項目改為垂直排列 */
+  /* 4. 列表項目 (歷史紀錄/管理) 改為垂直排列 */
   .history-item,
   #manageList > .glass-card {
     flex-direction: column;
-    align-items: stretch; /* 撐滿寬度 */
-    text-align: center;
+    align-items: stretch; /* 讓內容撐滿寬度 */
+    text-align: center;   /* 手機版文字置中比較好看 */
+    gap: 10px;
   }
-}
+  
+  /* 微調：確保管理頁面的按鈕群組在手機上也置中 */
+  #manageList > .glass-card > div:last-child {
+    width: 100%;
+    justify-content: center;
+  }
+
+} /* <--- ⚠️ 這個大括號非常重要！一定要有，否則電腦版會壞掉 */

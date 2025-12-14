@@ -13,6 +13,16 @@
         <a href="dashboard.html" class="active">紀錄</a>
         <a href="manage.html">管理</a>
         <a href="overview.html">總覽</a>
+
+        <div class="login-container">
+            <span id="userInfo" style="font-size: 0.9rem; color: var(--accent-color);"></span>
+            <button id="loginBtn" onclick="googleLogin()" class="btn-sm" style="background: var(--text-primary); color: var(--bg-color);">
+                Google 登入
+            </button>
+            <button id="logoutBtn" onclick="googleLogout()" class="btn-sm danger" style="display: none;">
+                登出
+            </button>
+        </div>
     </nav>
 
     <div class="container">
@@ -64,7 +74,7 @@
             </div>
         </div>
     </div>
-
+    <script type="module" src="firebase-init.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

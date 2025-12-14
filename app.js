@@ -1,19 +1,77 @@
-/* app.js - V6.1 完整版 */
-const STORAGE_KEY = 'animeDB_v6_1'; // 更新Key以確保環境乾淨
+/* app.js - V9.0 雲端同步旗艦版 */
+const STORAGE_KEY = 'animeDB_v8'; // 本機備用 Key
 
-// ===== 基礎資料存取 =====
-function loadData() {
-    try {
-        const data = localStorage.getItem(STORAGE_KEY);
-        return data ? JSON.parse(data) : [];
-    } catch (e) {
-        console.error("資料讀取失敗", e);
-        return [];
+// ===== 核心：資料讀取 (支援 本機 vs 雲端) =====
+// 這是非同步函式，呼叫時必須用 await
+async function loadData() {
+    // 1. 如果已登入，優先讀取雲端
+    if (window.currentUser && window.firebaseDB) {
+        // 從全域變數拿到 Firebase 方法
+        const { ref, get, child } = window.firebaseModule; 
+        const dbRef = ref(window.firebaseDB);
+        
+        try {
+            const snapshot = await get(child(dbRef, `users/${window.currentUser.uid}/animes`));
+            if (snapshot.exists()) {
+                return snapshot.val();
+            } else {
+                // 如果雲端沒資料，嘗試檢查本機是否有資料可以「搬運」上去
+                const local = loadLocalData();
+                if (local.length > 0) {
+                    console.log("偵測到本機資料，自動同步至雲端...");
+                    await saveData(local); // 上傳
+                    return local;
+                }
+                return [];
+            }
+        } catch (error) {
+            console.error("雲端讀取失敗:", error);
+            return [];
+        }
+    } 
+    // 2. 未登入，讀取本機
+    else {
+        return loadLocalData();
     }
 }
 
-function saveData(data) {
+// 輔助：純本機讀取
+function loadLocalData() {
+    try {
+        const data = localStorage.getItem(STORAGE_KEY);
+        return data ? JSON.parse(data) : [];
+    } catch (e) { return []; }
+}
+
+// ===== 核心：資料存檔 =====
+async function saveData(data) {
+    // 1. 如果已登入，存到雲端
+    if (window.currentUser && window.firebaseDB) {
+        const { ref, set } = window.firebaseModule;
+        try {
+            await set(ref(window.firebaseDB, `users/${window.currentUser.uid}/animes`), data);
+            console.log("雲端存檔成功");
+        } catch (e) {
+            console.error("雲端存檔失敗", e);
+            alert("雲端同步失敗，請檢查網路");
+        }
+    } 
+    // 2. 無論有無登入，都備份一份在 LocalStorage (為了 PWA 離線體驗)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// ===== 監聽登入狀態改變 (由 firebase-init.js 觸發) =====
+// 當登入/登出發生時，重新整理畫面
+window.addEventListener('authChanged', async () => {
+    console.log("身分狀態改變，重新載入資料...");
+    await refreshAll(); // 重新執行各頁面的載入函式
+});
+
+// 統一重新整理函式
+async function refreshAll() {
+    if(document.getElementById('animeGrid')) await loadDashboard();
+    if(document.getElementById('manageList')) await loadManage();
+    if(document.getElementById('pieChart')) await loadOverview();
 }
 
 // ===== 工具：週次計算 =====
@@ -29,7 +87,6 @@ function getWeekOptions() {
         tempMon.setDate(monday.getDate() + (i * 7));
         let tempSun = new Date(tempMon);
         tempSun.setDate(tempMon.getDate() + 6);
-        
         const fmt = d => `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
         const val = `${fmt(tempMon)}~${fmt(tempSun)}`;
         options.push({ value: val, label: i === 0 ? `${val} (本週)` : val, isCurrent: i === 0 });
@@ -38,39 +95,24 @@ function getWeekOptions() {
 }
 
 // ===== 1. 新增動畫 =====
-function addAnime(e) {
+async function addAnime(e) {
     e.preventDefault();
-    
-    // 確保這裡的 ID 與 index.html 對應
-    const titleEl = document.getElementById('title');
-    const totalEl = document.getElementById('total');
-    const imgUrlEl = document.getElementById('imgUrl');
+    const title = document.getElementById('title').value.trim();
+    const total = parseInt(document.getElementById('total').value);
+    const imgUrl = document.getElementById('imgUrl').value.trim();
 
-    if (!titleEl || !totalEl) {
-        alert('程式錯誤：找不到輸入框');
-        return;
-    }
-
-    const title = titleEl.value.trim();
-    const total = parseInt(totalEl.value);
-    const imgUrl = imgUrlEl.value.trim();
-
-    if (!title || total <= 0) {
-        alert('請輸入有效的標題與集數');
-        return;
-    }
+    if (!title || total <= 0) return alert('請輸入正確資料');
 
     const newAnime = {
         id: Date.now(),
-        title: title,
-        total: total,
+        title, total,
         image: imgUrl || 'https://placehold.co/600x400/1e293b/FFF?text=No+Image',
         history: [] 
     };
 
-    const data = loadData();
+    const data = await loadData(); // 改為 await
     data.push(newAnime);
-    saveData(data);
+    await saveData(data); // 改為 await
 
     alert(`✨ 成功加入：${title}`);
     window.location.href = 'dashboard.html';
@@ -79,11 +121,12 @@ function addAnime(e) {
 // ===== 2. 紀錄頁面 (Dashboard) =====
 let currentAnimeId = null;
 
-function loadDashboard() {
+async function loadDashboard() {
     const list = document.getElementById('animeGrid');
     if (!list) return;
 
-    const data = loadData();
+    list.innerHTML = '<p style="grid-column:1/-1; text-align:center;">載入中...</p>'; // Loading 狀態
+    const data = await loadData(); // 改為 await
     list.innerHTML = '';
 
     if (data.length === 0) {
@@ -91,33 +134,25 @@ function loadDashboard() {
         return;
     }
 
-    // 新增的動畫排在前面
     data.sort((a, b) => b.id - a.id);
 
     data.forEach(anime => {
-        // 計算觀看進度 (取歷史中最大的集數)
-        const watched = anime.history.length > 0 
-            ? Math.max(...anime.history.map(h => h.end)) 
-            : 0;
-        
+        const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
         let progress = Math.round((watched / anime.total) * 100);
         if (progress > 100) progress = 100;
-        
+
         const card = document.createElement('div');
         card.className = 'glass-card';
         card.innerHTML = `
             <img src="${anime.image}" class="anime-cover" onerror="this.src='https://placehold.co/600x400?text=Error'">
             <h3 style="margin:0 0 10px 0;">${anime.title}</h3>
-            
             <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:var(--text-secondary); font-size:0.9rem;">
                 <span>進度: ${watched}/${anime.total}</span>
                 <span>${progress}%</span>
             </div>
-            
             <div style="background:rgba(255,255,255,0.1); height:8px; border-radius:4px; overflow:hidden; margin-bottom:15px; width:100%;">
                 <div style="background:var(--success-color); width:${progress}%; height:100%; transition:width 0.5s ease; min-width:${progress > 0 ? '5px' : '0'};"></div>
             </div>
-
             <div style="display:flex; gap:10px;">
                 <button onclick="openUpdateModal(${anime.id}, ${watched}, ${anime.total})">更新進度</button>
                 <button class="outline" onclick="openHistoryModal(${anime.id})">紀錄</button>
@@ -127,13 +162,12 @@ function loadDashboard() {
     });
 }
 
-// --- 更新進度 Modal ---
+// --- 更新與歷史紀錄 (Modal) ---
+// 這裡的 Modal 開啟不需要 async，因為資料已經在畫面上了，或是點擊當下才讀
 function openUpdateModal(id, currentWatched, total) {
     currentAnimeId = id;
     const modal = document.getElementById('updateModal');
     const weekSelect = document.getElementById('modalWeek');
-    
-    // 填入週次
     weekSelect.innerHTML = '';
     getWeekOptions().forEach(opt => {
         const option = document.createElement('option');
@@ -142,113 +176,85 @@ function openUpdateModal(id, currentWatched, total) {
         if(opt.isCurrent) option.selected = true;
         weekSelect.appendChild(option);
     });
-
-    // 預設填入下一集
     document.getElementById('modalStart').value = currentWatched + 1;
     document.getElementById('modalEnd').value = currentWatched + 1;
     document.getElementById('modalTotal').textContent = total;
-    
     modal.classList.add('active');
 }
 
-function submitUpdate() {
+async function submitUpdate() {
     const start = parseInt(document.getElementById('modalStart').value);
     const end = parseInt(document.getElementById('modalEnd').value);
     const week = document.getElementById('modalWeek').value;
     const maxTotal = parseInt(document.getElementById('modalTotal').textContent);
     
-    if (isNaN(start) || isNaN(end)) return alert('請輸入數字');
-    if (start > end) return alert('開始集數不能大於結束集數');
-    if (start < 1) return alert('集數必須大於 0');
-    if (end > maxTotal) return alert(`超過總集數 (${maxTotal})`);
+    if (isNaN(start) || isNaN(end) || start > end || start < 1 || end > maxTotal) return alert('輸入錯誤');
 
-    const data = loadData();
+    const data = await loadData();
     const anime = data.find(a => a.id === currentAnimeId);
+    if(anime.history.some(h => (start <= h.end && end >= h.start))) return alert('範圍重疊！');
+
+    anime.history.push({ id: Date.now(), week, start, end, count: (end - start + 1) });
+    await saveData(data);
     
-    // 檢查重疊
-    const isOverlap = anime.history.some(h => (start <= h.end && end >= h.start));
-    if (isOverlap) return alert('錯誤：輸入的集數範圍與過去紀錄重疊！');
-
-    anime.history.push({ 
-        id: Date.now(), 
-        week: week, 
-        start: start, 
-        end: end, 
-        count: (end - start + 1) 
-    });
-
-    saveData(data);
     closeModal('updateModal');
     loadDashboard();
 }
 
-// --- 歷史紀錄 Modal ---
-function openHistoryModal(id) {
+async function openHistoryModal(id) {
     currentAnimeId = id;
     const modal = document.getElementById('historyModal');
     const list = document.getElementById('historyList');
-    const data = loadData();
+    
+    list.innerHTML = '<p>讀取中...</p>';
+    modal.classList.add('active');
+
+    const data = await loadData();
     const anime = data.find(a => a.id === id);
-
     list.innerHTML = '';
+    
     const sortedHistory = [...anime.history].sort((a,b) => b.id - a.id);
-
     if (sortedHistory.length === 0) {
-        list.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">尚無紀錄</p>';
+        list.innerHTML = '<p style="text-align:center; color:var(--text-secondary)">尚無紀錄</p>';
     } else {
         sortedHistory.forEach(h => {
             const item = document.createElement('div');
             item.className = 'history-item';
-            
-            // V6.1 修正：判斷是否為單集
             const epText = (h.start === h.end) ? `第 ${h.start} 集` : `第 ${h.start}-${h.end} 集`;
-
             item.innerHTML = `
-                <div>
-                    <span style="color:var(--accent-color); font-size:0.9rem; margin-right:8px;">${h.week}</span>
-                    <span>${epText}</span>
-                </div>
+                <div><span style="color:var(--accent-color); margin-right:8px;">${h.week}</span> ${epText}</div>
                 <button class="danger btn-sm" onclick="deleteHistory(${h.id})">刪除</button>
             `;
             list.appendChild(item);
         });
     }
-    modal.classList.add('active');
 }
 
-function deleteHistory(historyId) {
-    if(!confirm('確定要刪除這筆紀錄嗎？')) return;
-    const data = loadData();
+async function deleteHistory(historyId) {
+    if(!confirm('確定刪除？')) return;
+    const data = await loadData();
     const anime = data.find(a => a.id === currentAnimeId);
     anime.history = anime.history.filter(h => h.id !== historyId);
-    
-    saveData(data);
-    openHistoryModal(currentAnimeId); // 刷新列表
-    loadDashboard(); // 刷新背景進度
+    await saveData(data);
+    openHistoryModal(currentAnimeId); 
+    loadDashboard(); 
 }
 
-function closeModal(id) {
-    document.getElementById(id).classList.remove('active');
-}
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
 // ===== 3. 管理頁面 (Manage) =====
-function loadManage() {
+async function loadManage() {
     const list = document.getElementById('manageList');
     if (!list) return;
-
-    const data = loadData();
+    
+    list.innerHTML = '<p>載入中...</p>';
+    const data = await loadData();
     list.innerHTML = '';
 
     data.forEach(anime => {
         const item = document.createElement('div');
         item.className = 'glass-card';
-        // 手機版樣式相容性保留
-        item.style.marginBottom = '15px';
-        item.style.padding = '15px 20px';
-        item.style.display = 'flex';
-        item.style.justifyContent = 'space-between';
-        item.style.alignItems = 'center';
-        
+        item.style.cssText = "margin-bottom:15px; padding:15px 20px; display:flex; justify-content:space-between; align-items:center;";
         item.innerHTML = `
             <div style="font-weight:500; flex:1;">${anime.title}</div>
             <div style="display:flex; gap:10px;">
@@ -260,48 +266,136 @@ function loadManage() {
     });
 }
 
-function deleteAnime(id) {
-    if(!confirm('確定刪除？這將移除所有觀看紀錄。')) return;
-    let data = loadData();
+// 編輯功能
+let editingAnimeId = null;
+async function openEditModal(id) {
+    const data = await loadData();
+    const anime = data.find(a => a.id === id);
+    if (!anime) return;
+    editingAnimeId = id;
+    document.getElementById('editTitle').value = anime.title;
+    document.getElementById('editTotal').value = anime.total;
+    document.getElementById('editImgUrl').value = anime.image;
+    document.getElementById('editModal').classList.add('active');
+}
+
+async function submitEdit() {
+    const newTitle = document.getElementById('editTitle').value.trim();
+    const newTotal = parseInt(document.getElementById('editTotal').value);
+    const newImg = document.getElementById('editImgUrl').value.trim();
+    if (!newTitle || newTotal <= 0) return alert('請輸入有效資料');
+
+    const data = await loadData();
+    const index = data.findIndex(a => a.id === editingAnimeId);
+    if (index !== -1) {
+        data[index].title = newTitle;
+        data[index].total = newTotal;
+        data[index].image = newImg || 'https://placehold.co/600x400/1e293b/FFF?text=No+Image';
+        await saveData(data);
+        alert('修改成功');
+        closeModal('editModal');
+        loadManage();
+    }
+}
+
+async function deleteAnime(id) {
+    if(!confirm('確定刪除？此動作將同步至雲端。')) return;
+    let data = await loadData();
     data = data.filter(a => a.id !== id);
-    saveData(data);
+    await saveData(data);
     loadManage();
 }
 
-// 備份功能
-function exportToJSON() {
-    const data = loadData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `anime_backup_full.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+// ===== 4. 總覽與其他 (Overview & Search) =====
+async function loadOverview() {
+    const data = await loadData();
+    const totalAnimes = data.length;
+    const totalEpisodes = data.reduce((acc, cur) => acc + cur.total, 0);
+    const watchedEpisodes = data.reduce((acc, cur) => {
+        return acc + cur.history.reduce((hAcc, h) => hAcc + h.count, 0);
+    }, 0);
+    const rate = totalEpisodes ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0;
+
+    if(document.getElementById('valTotal')) {
+        document.getElementById('valTotal').textContent = totalAnimes;
+        document.getElementById('valEp').textContent = totalEpisodes;
+        document.getElementById('valWatched').textContent = watchedEpisodes;
+    }
+    const pieChart = document.getElementById('pieChart');
+    if (pieChart) {
+        pieChart.style.background = `conic-gradient(var(--brand) 0% ${rate}%, rgba(255,255,255,0.1) ${rate}% 100%)`;
+        document.getElementById('pieText').textContent = `${rate}%`;
+    }
+    renderHeatmap(data); // 傳入 data
+    renderActivity(data); // 傳入 data
 }
 
-function importFromJSON(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const json = JSON.parse(e.target.result);
-            if (Array.isArray(json)) {
-                if(confirm('這將覆蓋目前所有資料，確定還原嗎？')) {
-                    saveData(json);
-                    alert('還原成功！');
-                    location.reload();
-                }
-            } else { alert('檔案格式錯誤'); }
-        } catch (err) { alert('無法解析檔案'); }
-    };
-    reader.readAsText(file);
+function renderActivity(data) {
+    const activityList = document.getElementById('activityList');
+    if (!activityList) return;
+    activityList.innerHTML = '';
+    let allHistory = [];
+    data.forEach(anime => {
+        anime.history.forEach(h => {
+            const epDisplay = (h.start === h.end) ? `看了第 ${h.start} 集` : `看了第 ${h.start}-${h.end} 集`;
+            allHistory.push({ animeTitle: anime.title, week: h.week, desc: epDisplay, timestamp: h.id });
+        });
+    });
+    allHistory.sort((a, b) => b.timestamp - a.timestamp);
+    const recent = allHistory.slice(0, 5);
+    if (recent.length === 0) activityList.innerHTML = '<div style="color:var(--text-secondary); text-align:center;">尚無活動</div>';
+    else {
+        recent.forEach(act => {
+            const row = document.createElement('div');
+            row.style.cssText = "padding:12px 0; border-bottom:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;";
+            row.innerHTML = `
+                <div><div style="font-weight:bold; margin-bottom:4px;">${act.animeTitle}</div><div style="font-size:0.85rem; color:var(--text-secondary);">${act.desc}</div></div>
+                <div style="font-size:0.85rem; color:var(--text-secondary); text-align:right;">${act.week}</div>
+            `;
+            activityList.appendChild(row);
+        });
+    }
 }
 
-// CSV 生成
+// 熱力圖 (週單位)
+function renderHeatmap(data) {
+    const container = document.getElementById('heatmap');
+    if (!container) return;
+    container.innerHTML = '';
+    const weekCounts = {};
+    data.forEach(anime => {
+        anime.history.forEach(h => {
+            if (!weekCounts[h.week]) weekCounts[h.week] = 0;
+            weekCounts[h.week] += h.count;
+        });
+    });
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day == 0 ? -6 : 1); 
+    const currentMonday = new Date(now.setDate(diff));
+
+    for (let i = 51; i >= 0; i--) {
+        let tempMon = new Date(currentMonday);
+        tempMon.setDate(currentMonday.getDate() - (i * 7));
+        let tempSun = new Date(tempMon);
+        tempSun.setDate(tempMon.getDate() + 6);
+        const fmt = d => `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+        const weekStr = `${fmt(tempMon)}~${fmt(tempSun)}`;
+        const count = weekCounts[weekStr] || 0;
+        let level = 'level-0';
+        if (count > 0) level = 'level-1';
+        if (count > 5) level = 'level-2';
+        if (count > 12) level = 'level-3';
+        if (count > 20) level = 'level-4';
+        const square = document.createElement('div');
+        square.className = `day-square ${level}`;
+        square.title = `${weekStr}: 共 ${count} 集`;
+        if (i === 0) square.style.border = '1px solid var(--accent-color)';
+        container.appendChild(square);
+    }
+}
+
+// CSV 與 搜尋
 function initCSVSelect() {
     const select = document.getElementById('csvWeekSelect');
     if (!select) return;
@@ -314,31 +408,22 @@ function initCSVSelect() {
         select.appendChild(option);
     });
 }
-
-function generateCSV() {
+async function generateCSV() {
     const targetWeek = document.getElementById('csvWeekSelect').value;
-    const data = loadData();
+    const data = await loadData();
     let csvContent = "\uFEFF動漫名稱,當週集數,觀看進度(區間),,速度評價\n";
-    
-    let totalEp = 0;
-    let hasData = false;
-
+    let totalEp = 0; let hasData = false;
     data.forEach(anime => {
         const logs = anime.history.filter(h => h.week === targetWeek);
         if (logs.length > 0) {
             hasData = true;
             const count = logs.reduce((sum, log) => sum + log.count, 0);
             totalEp += count;
-            
-            // V6.1 修正：CSV 也套用單集顯示邏輯
             const rangeStr = logs.map(l => l.start === l.end ? `${l.start}` : `${l.start}~${l.end}`).join(' & ');
-            
             csvContent += `${anime.title},${count},"${rangeStr}",,\n`;
         }
     });
-
     if (!hasData) return alert(`週次 ${targetWeek} 無資料`);
-
     let speedRating = "混沌";
     if (totalEp <= 5) speedRating = "極慢";
     else if (totalEp <= 15) speedRating = "緩慢";
@@ -346,12 +431,10 @@ function generateCSV() {
     else if (totalEp <= 50) speedRating = "快速";
     else if (totalEp <= 70) speedRating = "極快";
     else if (totalEp <= 100) speedRating = "極限";
-
     csvContent += `\n總計,${totalEp},,,\n`;
     let rows = csvContent.split("\n");
     if (rows.length > 1) rows[1] += `${speedRating}`;
     csvContent = rows.join("\n");
-
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -361,220 +444,51 @@ function generateCSV() {
     link.click();
     document.body.removeChild(link);
 }
-
-// app.js - V7.2 熱力圖邏輯修正 (請覆蓋原本的 renderHeatmap)
-
-function renderHeatmap() {
-    const container = document.getElementById('heatmap');
-    if (!container) return;
-
-    container.innerHTML = '';
-    const data = loadData();
-    
-    // 1. 建立「週次索引」 (Week Map)
-    // 我們只關心 key 是否完全一致。
-    // 資料庫存的格式範例: "12/01~12/07"
-    const weekCounts = {};
-    
-    data.forEach(anime => {
-        anime.history.forEach(h => {
-            // 直接累加，不做額外轉換，確保與儲存時的邏輯一致
-            if (!weekCounts[h.week]) weekCounts[h.week] = 0;
-            weekCounts[h.week] += h.count;
-        });
-    });
-
-    // 2. 生成過去 52 週的格子
-    // 關鍵修正：確保這裡生成的 "weekStr" 格式與 getWeekOptions() 完全一致
-    const now = new Date();
-    const day = now.getDay(); 
-    // 算出本週一 (如果今天是週日(0)，要減 6 天回到週一；如果是週一(1)~週六(6)，減去 (day-1))
-    const diff = now.getDate() - day + (day == 0 ? -6 : 1); 
-    const currentMonday = new Date(now.setDate(diff));
-
-    // 往回推 52 週 (從前 51 週 ~ 本週)
-    // 為了讓時間軸由左(舊)到右(新)，我們從 i = 51 數到 0
-    for (let i = 51; i >= 0; i--) {
-        let tempMon = new Date(currentMonday);
-        tempMon.setDate(currentMonday.getDate() - (i * 7));
-        
-        let tempSun = new Date(tempMon);
-        tempSun.setDate(tempMon.getDate() + 6);
-
-        // 格式化：確保月份和日期都有補零 (padStart)
-        // 例如: 1月5日 必須是 "01/05" 而非 "1/5"
-        const fmt = d => `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
-        const weekStr = `${fmt(tempMon)}~${fmt(tempSun)}`;
-        
-        // 3. 比對資料
-        const count = weekCounts[weekStr] || 0;
-
-        // 4. 決定顏色等級
-        let level = 'level-0';
-        if (count > 0) level = 'level-1';
-        if (count > 5) level = 'level-2';
-        if (count > 12) level = 'level-3';
-        if (count > 20) level = 'level-4';
-
-        // 5. 建立 HTML
-        const square = document.createElement('div');
-        square.className = `day-square ${level}`;
-        
-        // Tooltip 顯示資訊 (加入年份方便除錯)
-        square.title = `${weekStr}: 共 ${count} 集`;
-
-        // 標記本週 (可選：讓本週的格子有個邊框，讓你確認現在算到哪一週了)
-        if (i === 0) {
-            square.style.border = '1px solid var(--accent-color)';
-        }
-        
-        container.appendChild(square);
-    }
-}
-
-// ===== 4. 總覽頁面 (Overview) =====
-function loadOverview() {
-    const data = loadData();
-    const totalAnimes = data.length;
-    const totalEpisodes = data.reduce((acc, cur) => acc + cur.total, 0);
-    const watchedEpisodes = data.reduce((acc, cur) => {
-        return acc + cur.history.reduce((hAcc, h) => hAcc + h.count, 0);
-    }, 0);
-    const rate = totalEpisodes ? Math.round((watchedEpisodes / totalEpisodes) * 100) : 0;
-
-    // 更新數據卡片
-    if(document.getElementById('valTotal')) {
-        document.getElementById('valTotal').textContent = totalAnimes;
-        document.getElementById('valEp').textContent = totalEpisodes;
-        document.getElementById('valWatched').textContent = watchedEpisodes;
-    }
-
-    // 更新圓餅圖
-    const pieChart = document.getElementById('pieChart');
-    if (pieChart) {
-        pieChart.style.background = `conic-gradient(var(--brand) 0% ${rate}%, rgba(255,255,255,0.1) ${rate}% 100%)`;
-        const pieText = document.getElementById('pieText');
-        if(pieText) pieText.textContent = `${rate}%`;
-    }
-
-    // 更新近期活動
-    const activityList = document.getElementById('activityList');
-    if (activityList) {
-        activityList.innerHTML = '';
-        let allHistory = [];
-        data.forEach(anime => {
-            anime.history.forEach(h => {
-                // V6.1 修正：活動日誌的單集顯示
-                const epDisplay = (h.start === h.end) ? `看了第 ${h.start} 集` : `看了第 ${h.start}-${h.end} 集`;
-                
-                allHistory.push({
-                    animeTitle: anime.title,
-                    week: h.week,
-                    desc: epDisplay,
-                    timestamp: h.id
-                });
-            });
-        });
-        
-        allHistory.sort((a, b) => b.timestamp - a.timestamp);
-        const recent = allHistory.slice(0, 5);
-
-        if (recent.length === 0) {
-            activityList.innerHTML = '<div style="color:var(--text-secondary); text-align:center;">尚無活動</div>';
-        } else {
-            recent.forEach(act => {
-                const row = document.createElement('div');
-                row.style.padding = '12px 0';
-                row.style.borderBottom = '1px solid var(--glass-border)';
-                row.style.display = 'flex';
-                row.style.justifyContent = 'space-between';
-                row.style.alignItems = 'center';
-                
-                row.innerHTML = `
-                    <div>
-                        <div style="font-weight:bold; margin-bottom:4px;">${act.animeTitle}</div>
-                        <div style="font-size:0.85rem; color:var(--text-secondary);">${act.desc}</div>
-                    </div>
-                    <div style="font-size:0.85rem; color:var(--text-secondary); text-align:right;">
-                        ${act.week}
-                    </div>
-                `;
-                activityList.appendChild(row);
-            });
-        }
-    }
-    renderHeatmap(); 
-}
-
-// app.js - V8.0 新增功能
-
-// ===== 搜尋功能 (Dashboard) =====
 function searchAnime() {
     const input = document.getElementById('searchInput');
     const filter = input.value.toUpperCase();
     const grid = document.getElementById('animeGrid');
     const cards = grid.getElementsByClassName('glass-card');
-
     for (let i = 0; i < cards.length; i++) {
-        // 抓取卡片內的標題 (h3)
         const title = cards[i].getElementsByTagName("h3")[0];
         if (title) {
             const txtValue = title.textContent || title.innerText;
-            // 如果搜尋關鍵字存在於標題中，就顯示，否則隱藏
-            if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                cards[i].style.display = "";
-            } else {
-                cards[i].style.display = "none";
-            }
+            cards[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
         }
     }
 }
-
-// ===== 編輯功能 (Manage) =====
-let editingAnimeId = null;
-
-// 1. 開啟編輯視窗 (需修改 loadManage 裡的按鈕來呼叫此函式)
-function openEditModal(id) {
-    const data = loadData();
-    const anime = data.find(a => a.id === id);
-    if (!anime) return;
-
-    editingAnimeId = id;
-    document.getElementById('editTitle').value = anime.title;
-    document.getElementById('editTotal').value = anime.total;
-    document.getElementById('editImgUrl').value = anime.image;
-
-    document.getElementById('editModal').classList.add('active');
+async function exportToJSON() {
+    const data = await loadData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `anime_backup_full.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 }
-
-// 2. 提交編輯
-function submitEdit() {
-    const newTitle = document.getElementById('editTitle').value.trim();
-    const newTotal = parseInt(document.getElementById('editTotal').value);
-    const newImg = document.getElementById('editImgUrl').value.trim();
-
-    if (!newTitle || newTotal <= 0) return alert('請輸入有效資料');
-
-    const data = loadData();
-    const index = data.findIndex(a => a.id === editingAnimeId);
-    
-    if (index !== -1) {
-        // 更新資料 (保留原本的 history 和 id)
-        data[index].title = newTitle;
-        data[index].total = newTotal;
-        data[index].image = newImg || 'https://placehold.co/600x400/1e293b/FFF?text=No+Image';
-        
-        saveData(data);
-        alert('修改已儲存！');
-        closeModal('editModal');
-        loadManage(); // 重新整理列表
-    }
+function importFromJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const json = JSON.parse(e.target.result);
+            if (Array.isArray(json)) {
+                if(confirm('這將覆蓋目前所有資料，確定還原嗎？')) {
+                    await saveData(json);
+                    alert('還原成功！');
+                    location.reload();
+                }
+            } else { alert('檔案格式錯誤'); }
+        } catch (err) { alert('無法解析檔案'); }
+    };
+    reader.readAsText(file);
 }
 
 // ===== 初始化 =====
 window.onload = function() {
-    loadDashboard();
-    loadManage();
-    loadOverview();
+    refreshAll();
     initCSVSelect();
 };
