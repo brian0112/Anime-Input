@@ -147,7 +147,7 @@ function renderSearchResults(list) {
 
         const card = document.createElement('div');
         card.className = 'search-card';
-        card.onclick = () => selectAnimeFromAPI(title, eps, imgUrl);
+        card.onclick = () => selectAnimeFromAPI(title, eps, imgUrl, item.air_date);
         
         card.innerHTML = `
             <img src="${imgUrl}" loading="lazy">
@@ -159,12 +159,29 @@ function renderSearchResults(list) {
     });
 }
 
-function selectAnimeFromAPI(title, eps, imgUrl) {
+// 修改 selectAnimeFromAPI 函式，接收 airDate
+function selectAnimeFromAPI(title, eps, imgUrl, airDate) {
     document.getElementById('title').value = title;
     if (eps > 0) document.getElementById('total').value = eps;
     document.getElementById('imgUrl').value = imgUrl;
+
+    // 【新增】自動推算放送日
+    const weekdaySelect = document.getElementById('weekday');
+    if (airDate) {
+        // 建立日期物件 (注意：這裡假設 air_date 是 YYYY-MM-DD)
+        const date = new Date(airDate);
+        if (!isNaN(date.getTime())) {
+            // getDay() 回傳 0(週日)~6(週六)，剛好對應我們的 value
+            weekdaySelect.value = date.getDay();
+        } else {
+            weekdaySelect.value = -1; // 格式錯誤就選不固定
+        }
+    } else {
+        weekdaySelect.value = -1; // 沒有日期就選不固定
+    }
+
     closeModal('searchModal');
-    alert(`已自動填寫：${title}`);
+    alert(`已自動填寫：${title} (放送日已自動設定)`);
 }
 
 // ==========================================
@@ -172,11 +189,14 @@ function selectAnimeFromAPI(title, eps, imgUrl) {
 // ==========================================
 
 // 1. 新增動畫
+// 修改 addAnime 函式
 async function addAnime(e) {
     e.preventDefault();
     const title = document.getElementById('title').value.trim();
     const total = parseInt(document.getElementById('total').value);
     const imgUrl = document.getElementById('imgUrl').value.trim();
+    // 【新增】讀取放送日
+    const weekday = parseInt(document.getElementById('weekday').value);
 
     if (!title || total <= 0) return alert('請輸入正確資料');
 
@@ -184,6 +204,7 @@ async function addAnime(e) {
         id: Date.now(),
         title, total,
         image: imgUrl || 'https://placehold.co/600x400/1e293b/FFF?text=No+Image',
+        weekday, // 【新增】存入資料庫
         history: [] 
     };
 
@@ -380,6 +401,47 @@ async function deleteAnime(id) {
     loadManage();
 }
 
+// 【新增】顯示今日放送清單
+function renderTodaySchedule(data) {
+    const container = document.getElementById('todayList');
+    const title = document.getElementById('todayTitle');
+    if (!container) return;
+
+    // 1. 取得今天是星期幾 (0-6)
+    const today = new Date().getDay();
+    const weekNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+    
+    // 更新標題
+    title.innerHTML = `📅 今日放送 (${weekNames[today]})`;
+
+    // 2. 篩選出今天播出的動畫 (且尚未完結的)
+    // 邏輯：weekday 符合今天 且 觀看進度 < 總集數
+    const todaysAnime = data.filter(anime => {
+        // 先計算已看集數
+        const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
+        // 條件：星期符合 且 還沒看完
+        return anime.weekday === today && watched < anime.total;
+    });
+
+    // 3. 渲染畫面
+    container.innerHTML = '';
+    if (todaysAnime.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-secondary); width:100%;">今天沒有要追的新番，休息一下吧 ☕</p>';
+        return;
+    }
+
+    todaysAnime.forEach(anime => {
+        const badge = document.createElement('div');
+        // 簡單的小標籤樣式
+        badge.style.cssText = "display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.1); padding:8px 12px; border-radius:50px; border:1px solid var(--accent-color);";
+        badge.innerHTML = `
+            <img src="${anime.image}" style="width:30px; height:30px; border-radius:50%; object-fit:cover;">
+            <span style="font-weight:bold; font-size:0.9rem;">${anime.title}</span>
+        `;
+        container.appendChild(badge);
+    });
+}
+
 // 4. 總覽與其他 (Overview & CSV)
 async function loadOverview() {
     const data = await loadData();
@@ -400,6 +462,7 @@ async function loadOverview() {
         pieChart.style.background = `conic-gradient(var(--brand) 0% ${rate}%, rgba(255,255,255,0.1) ${rate}% 100%)`;
         document.getElementById('pieText').textContent = `${rate}%`;
     }
+    renderTodaySchedule(data);
     renderHeatmap(data); 
     renderActivity(data); 
 }
