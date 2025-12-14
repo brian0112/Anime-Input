@@ -50,6 +50,20 @@
                     <label>總集數</label>
                     <input type="number" id="total" min="1" placeholder="12" required>
                 </div>
+                
+                <div class="form-group">
+                    <label>放送日 (每週更新)</label>
+                    <select id="weekday" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+                        <option value="-1">不固定 / 已完結</option>
+                        <option value="1">週一 (Mon)</option>
+                        <option value="2">週二 (Tue)</option>
+                        <option value="3">週三 (Wed)</option>
+                        <option value="4">週四 (Thu)</option>
+                        <option value="5">週五 (Fri)</option>
+                        <option value="6">週六 (Sat)</option>
+                        <option value="0">週日 (Sun)</option>
+                    </select>
+                </div>
 
                 <div class="form-group">
                     <label>封面圖片網址 (選填)</label>
