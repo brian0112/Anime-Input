@@ -84,14 +84,21 @@ nav a:hover, nav a.active {
   backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
   border-radius: 16px;
-  padding: 30px;
+  padding: 30px; /* 確保內距足夠 */
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s; /* 加入一點互動感 */
+}
+
+/* 滑鼠移過去稍微浮起來，增加精緻感 */
+.glass-card:hover {
+  transform: translateY(-5px);
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 25px;
+  /*原本 minmax(280px, 1fr)，改大一點讓單行卡片少一張，視覺比較寬鬆*/
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+  gap: 30px; /*原本 25px，加大間距*/
 }
 
 /* ===== 4. 表單與按鈕 ===== */
@@ -154,11 +161,12 @@ button.outline:hover {
 /* ===== 5. 圖片與標籤 ===== */
 .anime-cover {
   width: 100%;
-  height: 180px;
+  height: 280px; /* 原本 180px 太矮了，改高一點符合海報比例 */
   object-fit: cover;
   border-radius: 10px;
   margin-bottom: 15px;
   background-color: #1e293b;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2); /* 加點陰影增加層次感 */
 }
 
 .badge {
