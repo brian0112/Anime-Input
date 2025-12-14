@@ -1,5 +1,5 @@
 // Service Worker 版本號 (修改程式後記得改這裡，例如變 v2)
-const CACHE_NAME = 'anime-input-v9.0';
+const CACHE_NAME = 'anime-input-v9.1';
 
 // 要快取的檔案清單
 const ASSETS_TO_CACHE = [
