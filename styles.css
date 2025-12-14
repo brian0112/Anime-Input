@@ -500,3 +500,15 @@ button.outline:hover {
     padding: 0;
     line-height: 1;
 }
+
+/* ===== 修正下拉選單樣式 ===== */
+select {
+    background-color: rgba(255, 255, 255, 0.05); /* 選單本身的底色 */
+    color: white; /* 選單文字顏色 */
+    cursor: pointer;
+}
+
+select option {
+    background-color: #1e293b; /* 【關鍵】選項展開後的深色背景 */
+    color: white; /* 選項文字顏色 */
+}
