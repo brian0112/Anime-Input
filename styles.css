@@ -338,31 +338,47 @@ button.outline:hover {
 }
 
 /* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
+/* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
 @media (max-width: 768px) {
+  
+  /* 1. 導覽列變為垂直排列 */
   nav {
     flex-direction: column;
     gap: 15px;
   }
+
+  /* 2. 登入區塊取消絕對定位，讓它自然流動 */
   .login-container {
-    position: static; /* 手機版取消絕對定位，讓它自然排列 */
+    position: static; /* 手機版取消 absolute，讓它跟著排 */
     margin-top: 10px;
+    width: 100%;       /* 讓區塊佔滿寬度 */
+    justify-content: center; /* 讓裡面的按鈕置中 */
   }
-}
-  /* 讓小型按鈕在手機上變回好按的大按鈕 */
+
+  /* 3. 讓小型按鈕在手機上變回好按的大按鈕 */
   .btn-sm,
   .history-item button,
   #manageList button {
     width: 100% !important;
     padding: 10px 20px;
     font-size: 1rem;
-    margin-top: 10px !important; /* 手機版需要上面有一點距離 */
+    margin-top: 10px !important; /* 手機版按鈕上方加點距離 */
+    margin-bottom: 0 !important;
   }
 
-  /* 列表項目改為垂直排列 */
+  /* 4. 列表項目 (歷史紀錄/管理) 改為垂直排列 */
   .history-item,
   #manageList > .glass-card {
     flex-direction: column;
-    align-items: stretch; /* 撐滿寬度 */
-    text-align: center;
+    align-items: stretch; /* 讓內容撐滿寬度 */
+    text-align: center;   /* 手機版文字置中比較好看 */
+    gap: 10px;
   }
-}
+  
+  /* 微調：確保管理頁面的按鈕群組在手機上也置中 */
+  #manageList > .glass-card > div:last-child {
+    width: 100%;
+    justify-content: center;
+  }
+
+} /* <--- ⚠️ 這個大括號非常重要！一定要有，否則電腦版會壞掉 */
