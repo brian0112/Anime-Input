@@ -367,10 +367,16 @@ async function openEditModal(id) {
     const data = await loadData();
     const anime = data.find(a => a.id === id);
     if (!anime) return;
+
     editingAnimeId = id;
     document.getElementById('editTitle').value = anime.title;
     document.getElementById('editTotal').value = anime.total;
     document.getElementById('editImgUrl').value = anime.image;
+    
+    // 【新增】讀取放送日，如果舊資料沒有這個欄位，預設為 -1 (不固定)
+    const weekdayVal = (anime.weekday !== undefined) ? anime.weekday : -1;
+    document.getElementById('editWeekday').value = weekdayVal;
+
     document.getElementById('editModal').classList.add('active');
 }
 
@@ -378,18 +384,25 @@ async function submitEdit() {
     const newTitle = document.getElementById('editTitle').value.trim();
     const newTotal = parseInt(document.getElementById('editTotal').value);
     const newImg = document.getElementById('editImgUrl').value.trim();
+    // 【新增】讀取新的放送日
+    const newWeekday = parseInt(document.getElementById('editWeekday').value);
+
     if (!newTitle || newTotal <= 0) return alert('請輸入有效資料');
 
     const data = await loadData();
     const index = data.findIndex(a => a.id === editingAnimeId);
+    
     if (index !== -1) {
+        // 更新資料
         data[index].title = newTitle;
         data[index].total = newTotal;
         data[index].image = newImg || 'https://placehold.co/600x400/1e293b/FFF?text=No+Image';
+        data[index].weekday = newWeekday; // 【新增】寫入資料庫
+        
         await saveData(data);
         alert('修改成功');
         closeModal('editModal');
-        loadManage();
+        loadManage(); // 重新整理列表
     }
 }
 
