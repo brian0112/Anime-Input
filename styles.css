@@ -94,11 +94,18 @@ nav a:hover, nav a.active {
   transform: translateY(-5px);
 }
 
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  /* 電腦版：左右留白 40px，讓內容不要貼齊螢幕 */
+  padding: 20px 40px; 
+}
+
 .grid {
   display: grid;
-  /*原本 minmax(280px, 1fr)，改大一點讓單行卡片少一張，視覺比較寬鬆*/
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
-  gap: 30px; /*原本 25px，加大間距*/
+  /* 強制分為 3 等份 (原本是 auto-fill 會自動變 4 欄) */
+  grid-template-columns: repeat(3, 1fr); 
+  gap: 30px; /* 維持寬敞的間距 */
 }
 
 /* ===== 4. 表單與按鈕 ===== */
@@ -161,12 +168,14 @@ button.outline:hover {
 /* ===== 5. 圖片與標籤 ===== */
 .anime-cover {
   width: 100%;
-  height: 280px; /* 原本 180px 太矮了，改高一點符合海報比例 */
-  object-fit: cover;
+  /* 刪除原本的 height: 280px */
+  /* height: auto; */
+  aspect-ratio: 16 / 9; /* 【關鍵】自動計算高度為 16:9 */
+  object-fit: cover;    /* 填滿窗口，多餘的會裁切掉 */
   border-radius: 10px;
   margin-bottom: 15px;
   background-color: #1e293b;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.2); /* 加點陰影增加層次感 */
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
 
 .badge {
@@ -353,6 +362,7 @@ button.outline:hover {
 
 /* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
 /* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
+/* ===== 手機版響應式設定 (Max Width 768px) ===== */
 @media (max-width: 768px) {
   
   /* 1. 導覽列變為垂直排列 */
@@ -395,4 +405,16 @@ button.outline:hover {
     justify-content: center;
   }
 
-} /* <--- ⚠️ 這個大括號非常重要！一定要有，否則電腦版會壞掉 */
+  /* ===== 5. 新增：解決緊湊感與排版問題 ===== */
+  
+  /* 手機版增加左右邊距，解決「太貼邊」的問題 */
+  .container {
+    padding: 20px 30px; 
+  }
+
+  /* 手機版強制改回單欄排列 (避免變成 3 欄擠在一起) */
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+}/* <--- ⚠️ 這個大括號非常重要！一定要有，否則電腦版會壞掉 */
