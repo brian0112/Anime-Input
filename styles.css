@@ -37,13 +37,13 @@ body {
 /* ===== 2. 導覽列 ===== */
 nav {
   display: flex;
-  justify-content: flex-start;
-  gap: 15px;
+  justify-content: center; /* 按鈕置中 */
+  align-items: center;
   padding: 15px;
   background: rgba(15, 23, 42, 0.6);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--glass-border);
-  position: sticky;
+  position: relative; /* 【關鍵】讓內部的絕對定位以此為基準 */
   top: 0;
   z-index: 100;
   margin-bottom: 30px;
@@ -62,6 +62,14 @@ nav a:hover, nav a.active {
   color: var(--text-primary);
   background: rgba(255, 255, 255, 0.1);
   box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.login-container {
+  position: absolute; /* 強制脫離排版流，固定在右邊 */
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 /* ===== 3. 卡片與排版 ===== */
@@ -331,7 +339,15 @@ button.outline:hover {
 
 /* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
 @media (max-width: 768px) {
-  
+  nav {
+    flex-direction: column;
+    gap: 15px;
+  }
+  .login-container {
+    position: static; /* 手機版取消絕對定位，讓它自然排列 */
+    margin-top: 10px;
+  }
+}
   /* 讓小型按鈕在手機上變回好按的大按鈕 */
   .btn-sm,
   .history-item button,
