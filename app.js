@@ -1,9 +1,7 @@
-/* app.js - V9.0 雲端同步旗艦版 */
-const STORAGE_KEY = 'animeDB_v8'; // 本機備用 Key
+/* app.js - V10.0 完整版 (Cloud + API Search) */
+const STORAGE_KEY = 'animeDB_v10'; // 本機備用 Key
 
-// ===== 核心：資料讀取 (支援 本機 vs 雲端) =====
-// app.js - 修正 Firebase 空陣列消失問題
-
+// ===== 核心：資料讀取 (包含白畫面修復) =====
 async function loadData() {
     // 1. 如果已登入，優先讀取雲端
     if (window.currentUser && window.firebaseDB) {
@@ -15,16 +13,15 @@ async function loadData() {
             if (snapshot.exists()) {
                 let data = snapshot.val();
                 
-                // 【關鍵修正 A】Firebase 若中間有刪除，可能會回傳物件而非陣列，需強制轉陣列
+                // 【修復】Firebase 回傳物件轉陣列
                 if (!Array.isArray(data)) {
                     data = Object.values(data);
                 }
 
-                // 【關鍵修正 B】資料清洗：確保每個動畫都有 history 陣列
-                // 解決 "Cannot read properties of undefined (reading 'length')" 問題
+                // 【修復】資料清洗：確保 history 存在，防止白畫面
                 data = data.map(anime => ({
                     ...anime,
-                    history: anime.history || [] // 如果 history 是 undefined，就補上 []
+                    history: anime.history || [] 
                 }));
 
                 return data;
@@ -67,21 +64,18 @@ async function saveData(data) {
             console.log("雲端存檔成功");
         } catch (e) {
             console.error("雲端存檔失敗", e);
-            alert("雲端同步失敗，請檢查網路");
         }
     } 
-    // 2. 無論有無登入，都備份一份在 LocalStorage (為了 PWA 離線體驗)
+    // 2. 備份到 LocalStorage
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
-// ===== 監聽登入狀態改變 (由 firebase-init.js 觸發) =====
-// 當登入/登出發生時，重新整理畫面
+// ===== 監聽登入狀態改變 =====
 window.addEventListener('authChanged', async () => {
     console.log("身分狀態改變，重新載入資料...");
-    await refreshAll(); // 重新執行各頁面的載入函式
+    await refreshAll();
 });
 
-// 統一重新整理函式
 async function refreshAll() {
     if(document.getElementById('animeGrid')) await loadDashboard();
     if(document.getElementById('manageList')) await loadManage();
@@ -108,7 +102,76 @@ function getWeekOptions() {
     return options;
 }
 
-// ===== 1. 新增動畫 =====
+// ==========================================
+// 🔥 V10.0 新增：Bangumi API 搜尋功能 🔥
+// ==========================================
+
+async function searchBangumi() {
+    const input = document.getElementById('title');
+    const query = input.value.trim();
+    
+    if (!query) return alert("請先輸入關鍵字！");
+    
+    const modal = document.getElementById('searchModal');
+    const resultsContainer = document.getElementById('searchResults');
+    
+    modal.classList.add('active');
+    resultsContainer.innerHTML = '<p style="text-align:center; grid-column:1/-1;">🚀 正在前往 Bangumi 搜尋...</p>';
+    
+    try {
+        const url = `https://api.bgm.tv/search/subject/${encodeURIComponent(query)}?type=2&responseGroup=small&max_results=20`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (!data.list || data.list.length === 0) {
+            resultsContainer.innerHTML = '<p style="text-align:center; grid-column:1/-1;">找不到相關動畫，請嘗試其他關鍵字。</p>';
+            return;
+        }
+        renderSearchResults(data.list);
+    } catch (error) {
+        console.error("API Error:", error);
+        resultsContainer.innerHTML = '<p style="text-align:center; grid-column:1/-1; color: #ef4444;">搜尋發生錯誤，請稍後再試。</p>';
+    }
+}
+
+function renderSearchResults(list) {
+    const container = document.getElementById('searchResults');
+    container.innerHTML = '';
+    
+    list.forEach(item => {
+        const title = item.name_cn || item.name;
+        let imgUrl = item.images ? item.images.large : 'https://placehold.co/300x450?text=No+Image';
+        imgUrl = imgUrl.replace('http://', 'https://');
+        const eps = (item.eps && item.eps > 0) ? item.eps : 0;
+        const epsText = eps > 0 ? `全 ${eps} 集` : '集數未知';
+
+        const card = document.createElement('div');
+        card.className = 'search-card';
+        card.onclick = () => selectAnimeFromAPI(title, eps, imgUrl);
+        
+        card.innerHTML = `
+            <img src="${imgUrl}" loading="lazy">
+            <h4>${title}</h4>
+            <p>${epsText}</p>
+            <p style="font-size:0.75rem; opacity:0.7;">${item.air_date || ''}</p>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function selectAnimeFromAPI(title, eps, imgUrl) {
+    document.getElementById('title').value = title;
+    if (eps > 0) document.getElementById('total').value = eps;
+    document.getElementById('imgUrl').value = imgUrl;
+    closeModal('searchModal');
+    alert(`已自動填寫：${title}`);
+}
+
+// ==========================================
+// 原有功能：新增與管理
+// ==========================================
+
+// 1. 新增動畫
 async function addAnime(e) {
     e.preventDefault();
     const title = document.getElementById('title').value.trim();
@@ -124,23 +187,23 @@ async function addAnime(e) {
         history: [] 
     };
 
-    const data = await loadData(); // 改為 await
+    const data = await loadData();
     data.push(newAnime);
-    await saveData(data); // 改為 await
+    await saveData(data);
 
     alert(`✨ 成功加入：${title}`);
     window.location.href = 'dashboard.html';
 }
 
-// ===== 2. 紀錄頁面 (Dashboard) =====
+// 2. 紀錄頁面 (Dashboard)
 let currentAnimeId = null;
 
 async function loadDashboard() {
     const list = document.getElementById('animeGrid');
     if (!list) return;
 
-    list.innerHTML = '<p style="grid-column:1/-1; text-align:center;">載入中...</p>'; // Loading 狀態
-    const data = await loadData(); // 改為 await
+    list.innerHTML = '<p style="grid-column:1/-1; text-align:center;">載入中...</p>';
+    const data = await loadData();
     list.innerHTML = '';
 
     if (data.length === 0) {
@@ -176,8 +239,6 @@ async function loadDashboard() {
     });
 }
 
-// --- 更新與歷史紀錄 (Modal) ---
-// 這裡的 Modal 開啟不需要 async，因為資料已經在畫面上了，或是點擊當下才讀
 function openUpdateModal(id, currentWatched, total) {
     currentAnimeId = id;
     const modal = document.getElementById('updateModal');
@@ -256,7 +317,7 @@ async function deleteHistory(historyId) {
 
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
-// ===== 3. 管理頁面 (Manage) =====
+// 3. 管理頁面 (Manage)
 async function loadManage() {
     const list = document.getElementById('manageList');
     if (!list) return;
@@ -268,7 +329,7 @@ async function loadManage() {
     data.forEach(anime => {
         const item = document.createElement('div');
         item.className = 'glass-card';
-        item.style.cssText = "margin-bottom:15px; padding:15px 20px; display:flex; justify-content:space-between; align-items:center;";
+        // 手機版樣式由 CSS 處理，這裡只需基本的
         item.innerHTML = `
             <div style="font-weight:500; flex:1;">${anime.title}</div>
             <div style="display:flex; gap:10px;">
@@ -280,7 +341,6 @@ async function loadManage() {
     });
 }
 
-// 編輯功能
 let editingAnimeId = null;
 async function openEditModal(id) {
     const data = await loadData();
@@ -320,7 +380,7 @@ async function deleteAnime(id) {
     loadManage();
 }
 
-// ===== 4. 總覽與其他 (Overview & Search) =====
+// 4. 總覽與其他 (Overview & CSV)
 async function loadOverview() {
     const data = await loadData();
     const totalAnimes = data.length;
@@ -340,8 +400,8 @@ async function loadOverview() {
         pieChart.style.background = `conic-gradient(var(--brand) 0% ${rate}%, rgba(255,255,255,0.1) ${rate}% 100%)`;
         document.getElementById('pieText').textContent = `${rate}%`;
     }
-    renderHeatmap(data); // 傳入 data
-    renderActivity(data); // 傳入 data
+    renderHeatmap(data); 
+    renderActivity(data); 
 }
 
 function renderActivity(data) {
@@ -371,7 +431,6 @@ function renderActivity(data) {
     }
 }
 
-// 熱力圖 (週單位)
 function renderHeatmap(data) {
     const container = document.getElementById('heatmap');
     if (!container) return;
@@ -409,7 +468,6 @@ function renderHeatmap(data) {
     }
 }
 
-// CSV 與 搜尋
 function initCSVSelect() {
     const select = document.getElementById('csvWeekSelect');
     if (!select) return;
@@ -457,19 +515,6 @@ async function generateCSV() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-}
-function searchAnime() {
-    const input = document.getElementById('searchInput');
-    const filter = input.value.toUpperCase();
-    const grid = document.getElementById('animeGrid');
-    const cards = grid.getElementsByClassName('glass-card');
-    for (let i = 0; i < cards.length; i++) {
-        const title = cards[i].getElementsByTagName("h3")[0];
-        if (title) {
-            const txtValue = title.textContent || title.innerText;
-            cards[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
-        }
-    }
 }
 async function exportToJSON() {
     const data = await loadData();
