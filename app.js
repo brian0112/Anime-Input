@@ -2,24 +2,38 @@
 const STORAGE_KEY = 'animeDB_v8'; // 本機備用 Key
 
 // ===== 核心：資料讀取 (支援 本機 vs 雲端) =====
-// 這是非同步函式，呼叫時必須用 await
+// app.js - 修正 Firebase 空陣列消失問題
+
 async function loadData() {
     // 1. 如果已登入，優先讀取雲端
     if (window.currentUser && window.firebaseDB) {
-        // 從全域變數拿到 Firebase 方法
         const { ref, get, child } = window.firebaseModule; 
         const dbRef = ref(window.firebaseDB);
         
         try {
             const snapshot = await get(child(dbRef, `users/${window.currentUser.uid}/animes`));
             if (snapshot.exists()) {
-                return snapshot.val();
+                let data = snapshot.val();
+                
+                // 【關鍵修正 A】Firebase 若中間有刪除，可能會回傳物件而非陣列，需強制轉陣列
+                if (!Array.isArray(data)) {
+                    data = Object.values(data);
+                }
+
+                // 【關鍵修正 B】資料清洗：確保每個動畫都有 history 陣列
+                // 解決 "Cannot read properties of undefined (reading 'length')" 問題
+                data = data.map(anime => ({
+                    ...anime,
+                    history: anime.history || [] // 如果 history 是 undefined，就補上 []
+                }));
+
+                return data;
             } else {
-                // 如果雲端沒資料，嘗試檢查本機是否有資料可以「搬運」上去
+                // 雲端沒資料，嘗試同步本機
                 const local = loadLocalData();
                 if (local.length > 0) {
                     console.log("偵測到本機資料，自動同步至雲端...");
-                    await saveData(local); // 上傳
+                    await saveData(local);
                     return local;
                 }
                 return [];
