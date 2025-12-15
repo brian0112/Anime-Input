@@ -761,6 +761,146 @@ function finishSpin(winner) {
     btn.textContent = "再抽一次";
 }
 
+// ==========================================
+// 🔥 V12.0 新增：探索頁面邏輯 🔥
+// ==========================================
+
+let exploreData = []; // 暫存 API 資料
+
+async function loadExplore() {
+    const grid = document.getElementById('exploreGrid');
+    const tabsContainer = document.getElementById('weekTabs');
+    if (!grid) return;
+
+    // 1. 初始化星期標籤
+    const weekNames = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+    const todayIndex = new Date().getDay(); // 0=週日, 1=週一...
+    
+    tabsContainer.innerHTML = '';
+    weekNames.forEach((name, index) => {
+        // Bangumi API 的 weekday: 1=Mon, ..., 7=Sun. 我們需要轉換一下
+        // JS: 0=Sun, 1=Mon ... 6=Sat
+        // 對應: API id = (index === 0) ? 7 : index
+        const btn = document.createElement('button');
+        btn.className = `tab-btn ${index === todayIndex ? 'active' : ''}`;
+        btn.textContent = (index === todayIndex) ? `${name} (今日)` : name;
+        btn.onclick = () => switchExploreTab(index);
+        tabsContainer.appendChild(btn);
+    });
+
+    // 2. 抓取資料
+    try {
+        const response = await fetch('https://api.bgm.tv/calendar');
+        const data = await response.json();
+        exploreData = data; // 格式: [{weekday: {id:1...}, items: [...]}, ...]
+        
+        // 3. 預設顯示今天的動畫
+        switchExploreTab(todayIndex);
+
+    } catch (error) {
+        console.error("Explore Error:", error);
+        grid.innerHTML = '<p style="text-align:center; grid-column:1/-1; color:#ef4444;">無法載入放送表，請稍後再試。</p>';
+    }
+}
+
+async function switchExploreTab(dayIndex) {
+    // 1. 更新按鈕樣式
+    document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        if (idx === dayIndex) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
+
+    // 2. 篩選資料
+    // Bangumi: Mon=1 ... Sat=6, Sun=7
+    // JS Input (dayIndex): Sun=0, Mon=1 ... Sat=6
+    const apiDayId = (dayIndex === 0) ? 7 : dayIndex;
+    
+    const dayData = exploreData.find(d => d.weekday.id === apiDayId);
+    const grid = document.getElementById('exploreGrid');
+    grid.innerHTML = '';
+
+    if (!dayData || !dayData.items || dayData.items.length === 0) {
+        grid.innerHTML = '<p style="text-align:center; grid-column:1/-1;">這天沒有動畫更新資料。</p>';
+        return;
+    }
+
+    // 3. 取得使用者已收藏的動畫 (為了避免重複加入)
+    const userAnimes = await loadData();
+    const userTitles = new Set(userAnimes.map(a => a.title)); // 用 Set 加速比對
+
+    // 4. 渲染卡片
+    dayData.items.forEach(item => {
+        // 排除掉沒有圖片的條目 (通常是不重要的)
+        if (!item.images || !item.images.large) return;
+
+        const title = item.name_cn || item.name;
+        // 修正圖片網址
+        let imgUrl = item.images.large || item.images.common;
+        if(imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
+        
+        // 檢查是否已收藏
+        const isAdded = userTitles.has(title);
+
+        const card = document.createElement('div');
+        card.className = 'glass-card explore-card';
+        // 點擊觸發加入 (如果已加入則提示)
+        card.onclick = () => quickAddFromExplore(item, dayIndex);
+
+        card.innerHTML = `
+            <div style="position:relative;">
+                <img src="${imgUrl}" class="anime-cover" loading="lazy">
+                <div class="explore-overlay">
+                    <span class="add-icon">${isAdded ? '✅' : '➕'}</span>
+                </div>
+                ${isAdded ? '<div style="position:absolute; top:5px; right:5px; background:var(--success-color); color:white; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:bold;">已收藏</div>' : ''}
+            </div>
+            <h4 style="margin:0; font-size:0.9rem; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${title}</h4>
+            <div style="margin-top:5px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.8rem; color:var(--text-secondary);">
+                    ${item.rating && item.rating.score ? '⭐' + item.rating.score : ''}
+                </span>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+async function quickAddFromExplore(item, weekdayIndex) {
+    const title = item.name_cn || item.name;
+    
+    // 1. 檢查是否重複
+    const userAnimes = await loadData();
+    if (userAnimes.some(a => a.title === title)) {
+        return alert(`《${title}》已經在你的清單裡囉！`);
+    }
+
+    // 2. 確認加入
+    if (!confirm(`要將《${title}》加入清單嗎？`)) return;
+
+    // 3. 準備資料
+    let imgUrl = item.images ? (item.images.large || item.images.common) : '';
+    if(imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
+
+    // API 回傳的 calendar 項目通常沒有 eps 總集數，設為 0 讓使用者之後補
+    // 放送日可以直接用目前的 weekdayIndex
+    const newAnime = {
+        id: Date.now(),
+        title: title,
+        total: 12, // 預設 12 (這是比較安全的猜測，或者設 0)
+        image: imgUrl || 'https://placehold.co/600x400/1e293b/FFF?text=No+Image',
+        weekday: weekdayIndex, // 直接帶入目前的星期
+        history: [] 
+    };
+
+    // 4. 存檔
+    userAnimes.push(newAnime);
+    await saveData(userAnimes);
+
+    // 5. 更新畫面 (把 + 變成 ✅)
+    alert(`✨ 成功加入！\n預設集數為 12，請之後再手動修正。`);
+    switchExploreTab(weekdayIndex); // 重新渲染該頁面以更新狀態
+}
+
 // ===== 初始化 =====
 window.onload = function() {
     refreshAll();
