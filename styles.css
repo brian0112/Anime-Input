@@ -573,3 +573,73 @@ select option {
   flex-direction: column; /* 內容垂直排列 */
   height: 100%;           /* 強制卡片高度撐滿整個 Grid 區塊 */
 }
+
+/* ===== 12. 探索頁面 (Explore) ===== */
+
+/* 星期切換標籤容器 */
+.tabs-container {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 25px;
+    flex-wrap: wrap; /* 手機版如果太窄會自動換行 */
+}
+
+/* 標籤按鈕 */
+.tab-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* 選中狀態 (亮燈) */
+.tab-btn.active {
+    background: var(--accent-color);
+    color: var(--bg-color);
+    border-color: var(--accent-color);
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+/* 探索卡片上的「加入」遮罩 (Hover Effect) */
+.explore-card {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.explore-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    border-radius: 10px;
+}
+
+.explore-card:hover .explore-overlay {
+    opacity: 1;
+}
+
+.add-icon {
+    font-size: 2rem;
+    color: var(--accent-color);
+    transform: scale(0.8);
+    transition: transform 0.2s;
+}
+
+.explore-card:hover .add-icon {
+    transform: scale(1.2);
+}
