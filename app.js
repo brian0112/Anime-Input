@@ -119,7 +119,7 @@ async function searchBangumi() {
     resultsContainer.innerHTML = '<p style="text-align:center; grid-column:1/-1;">🚀 正在前往 Bangumi 搜尋...</p>';
     
     try {
-        const url = `https://api.bgm.tv/search/subject/${encodeURIComponent(query)}?type=2&responseGroup=small&max_results=20`;
+        const url = `https://api.bgm.tv/search/subject/${encodeURIComponent(query)}?type=2&responseGroup=large&max_results=20`;
         const response = await fetch(url);
         const data = await response.json();
         
