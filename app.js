@@ -76,10 +76,19 @@ window.addEventListener('authChanged', async () => {
     await refreshAll();
 });
 
+// 修改 app.js 中的 refreshAll 函式
+
 async function refreshAll() {
+    // 檢查目前在哪一頁，就刷新那一頁的資料
     if(document.getElementById('animeGrid')) await loadDashboard();
     if(document.getElementById('manageList')) await loadManage();
     if(document.getElementById('pieChart')) await loadOverview();
+    
+    // 【新增】如果現在是在「個人名片」頁面，也要重新載入資料 (修復顯示未登入的問題)
+    if(document.getElementById('profile-card')) await loadProfile();
+    
+    // 【新增】如果現在是在「探索」頁面，也要重新檢查收藏狀態 (更新 ✅ 圖示)
+    if(document.getElementById('exploreGrid')) await loadExplore();
 }
 
 // ===== 工具：週次計算 =====
