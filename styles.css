@@ -71,8 +71,10 @@ nav a:hover, nav a.active {
 }
 
 .login-container {
-  position: absolute; /* 強制脫離排版流，固定在右邊 */
-  right: 20px;
+  position: absolute; /* 【關鍵】強制脫離置中隊伍，改為絕對定位 */
+  right: 20px;        /* 固定在最右邊 20px 的位置 */
+  top: 50%;           /* 垂直置中 */
+  transform: translateY(-50%); /* 修正垂直偏移，確保完全置中 */
   display: flex;
   align-items: center;
   gap: 10px;
