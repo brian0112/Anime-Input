@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <title>個人名片 - Anime Input</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <nav>
+        <a href="explore.html">探索</a>
+        <a href="index.html">新增</a>
+        <a href="dashboard.html">紀錄</a>
+        <a href="roulette.html">輪盤</a>
+        <a href="manage.html">管理</a>
+        <a href="overview.html">總覽</a>
+
+        <div class="login-container">
+            <a href="profile.html" id="userInfo" class="active" style="font-size: 0.9rem; color: var(--accent-color); text-decoration: none; margin-right: 10px;"></a>
+            <button id="loginBtn" onclick="googleLogin()" class="btn-sm" style="background: var(--text-primary); color: var(--bg-color);">
+                Google 登入
+            </button>
+            <button id="logoutBtn" onclick="googleLogout()" class="btn-sm danger" style="display: none;">
+                登出
+            </button>
+        </div>
+    </nav>
+
+    <div class="container" style="display: flex; flex-direction: column; align-items: center;">
+        
+        <div id="profile-card" class="glass-card profile-card">
+            <div class="profile-header">
+                <img id="profile-avatar" src="https://ui-avatars.com/api/?name=User&background=random" alt="Avatar">
+                <div class="profile-info">
+                    <h2 id="profile-name">未登入的使用者</h2>
+                    <p id="profile-title" style="color: var(--accent-color); font-weight: bold;">LV.1 萌新觀眾</p>
+                </div>
+            </div>
+
+            <div class="profile-stats">
+                <div class="stat-box">
+                    <span class="stat-num" id="stat-count">0</span>
+                    <span class="stat-label">收藏作品</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-num" id="stat-ep">0</span>
+                    <span class="stat-label">觀看集數</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-num" id="stat-time">0h</span>
+                    <span class="stat-label">投入時間</span>
+                </div>
+            </div>
+
+            <div class="profile-badges" id="badge-container">
+                <p style="font-size: 0.8rem; opacity: 0.6;">尚無徽章</p>
+            </div>
+            
+            <div class="profile-footer">
+                Anime Input - 我的追番履歷
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; display: flex; gap: 15px;">
+            <button onclick="downloadCard()" style="display: flex; align-items: center; gap: 5px;">
+                📸 下載名片
+            </button>
+        </div>
+
+        <div class="glass-card" style="width: 100%; max-width: 500px; margin-top: 30px;">
+            <h3 style="margin-bottom: 15px; border-left: 4px solid var(--accent-color); padding-left: 10px;">🏆 成就系統</h3>
+            <div id="achievements-list" class="achievement-grid">
+                </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="firebase-init.js"></script>
+    <script src="app.js"></script>
+    
+    <script>
+        window.onload = function() {
+            if(typeof loadProfile === 'function') {
+                loadProfile();
+            }
+        };
+    </script>
+</body>
+</html>
