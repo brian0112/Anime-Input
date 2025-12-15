@@ -160,28 +160,63 @@ function renderSearchResults(list) {
 }
 
 // 修改 selectAnimeFromAPI 函式，接收 airDate
+// 修改 selectAnimeFromAPI：加入「是否完結」的智慧判斷
 function selectAnimeFromAPI(title, eps, imgUrl, airDate) {
+    // 1. 基本填寫
     document.getElementById('title').value = title;
     if (eps > 0) document.getElementById('total').value = eps;
     document.getElementById('imgUrl').value = imgUrl;
 
-    // 【新增】自動推算放送日
+    // 2. 智慧判斷放送日
     const weekdaySelect = document.getElementById('weekday');
+    
     if (airDate) {
-        // 建立日期物件 (注意：這裡假設 air_date 是 YYYY-MM-DD)
-        const date = new Date(airDate);
-        if (!isNaN(date.getTime())) {
-            // getDay() 回傳 0(週日)~6(週六)，剛好對應我們的 value
-            weekdaySelect.value = date.getDay();
+        const startDate = new Date(airDate);
+        
+        if (!isNaN(startDate.getTime())) {
+            const startDay = startDate.getDay(); // 取得開始日的星期 (0-6)
+            
+            // --- 核心邏輯開始 ---
+            let finalValue = -1; // 預設為「已完結/不固定」
+
+            if (eps && eps > 0) {
+                // 如果有集數，計算預計結束時間
+                // 公式：開始日 + (集數 * 7天) + 緩衝 56 天 (預防停播/延期)
+                const estimatedDays = (eps * 7) + 56;
+                const estimatedEndDate = new Date(startDate);
+                estimatedEndDate.setDate(startDate.getDate() + estimatedDays);
+                
+                const today = new Date();
+
+                if (today > estimatedEndDate) {
+                    // 今天已經超過預計結束日 -> 判定為「已完結」
+                    finalValue = -1;
+                    console.log(`判定 [${title}] 已完結 (預計結束於 ${estimatedEndDate.toLocaleDateString()})`);
+                } else {
+                    // 還沒超過 -> 判定為「連載中」 -> 設定為星期幾
+                    finalValue = startDay;
+                }
+            } else {
+                // 如果 eps 為 0 或未知 (通常是長篇連載如海賊王，或尚未定檔)
+                // 假設它還在播，設定為星期幾
+                finalValue = startDay;
+            }
+            // --- 核心邏輯結束 ---
+
+            weekdaySelect.value = finalValue;
+
         } else {
-            weekdaySelect.value = -1; // 格式錯誤就選不固定
+            weekdaySelect.value = -1; // 日期格式錯誤
         }
     } else {
-        weekdaySelect.value = -1; // 沒有日期就選不固定
+        weekdaySelect.value = -1; // 沒有日期
     }
 
     closeModal('searchModal');
-    alert(`已自動填寫：${title} (放送日已自動設定)`);
+    
+    // 提示訊息稍微改一下，讓使用者知道系統幫他做了判斷
+    const statusText = (weekdaySelect.value == -1) ? "已完結" : "連載中";
+    alert(`已自動填寫：${title}\n(系統判定為：${statusText})`);
 }
 
 // ==========================================
