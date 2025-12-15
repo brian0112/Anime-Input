@@ -276,16 +276,21 @@ async function loadDashboard() {
 
         const card = document.createElement('div');
         card.className = 'glass-card';
+        // 注意看下面那個 <div> 的 style，我加入了 margin-top: auto;
         card.innerHTML = `
             <img src="${anime.image}" class="anime-cover" onerror="this.src='https://placehold.co/600x400?text=Error'">
+            
             <h3 style="margin:0 0 10px 0;">${anime.title}</h3>
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:var(--text-secondary); font-size:0.9rem;">
+            
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:var(--text-secondary); font-size:0.9rem; margin-top: auto;">
                 <span>進度: ${watched}/${anime.total}</span>
                 <span>${progress}%</span>
             </div>
+            
             <div style="background:rgba(255,255,255,0.1); height:8px; border-radius:4px; overflow:hidden; margin-bottom:15px; width:100%;">
                 <div style="background:var(--success-color); width:${progress}%; height:100%; transition:width 0.5s ease; min-width:${progress > 0 ? '5px' : '0'};"></div>
             </div>
+            
             <div style="display:flex; gap:10px;">
                 <button onclick="openUpdateModal(${anime.id}, ${watched}, ${anime.total})">更新進度</button>
                 <button class="outline" onclick="openHistoryModal(${anime.id})">紀錄</button>
