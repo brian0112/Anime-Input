@@ -103,11 +103,11 @@ nav a:hover, nav a.active {
   padding: 20px 40px; 
 }
 
+/* 修改：電腦版改為 4 欄排列，配合直式海報的視覺密度 */
 .grid {
   display: grid;
-  /* 強制分為 3 等份 (原本是 auto-fill 會自動變 4 欄) */
-  grid-template-columns: repeat(3, 1fr); 
-  gap: 30px; /* 維持寬敞的間距 */
+  grid-template-columns: repeat(4, 1fr); 
+  gap: 30px; /* 稍微縮小一點間距讓畫面緊湊一點點，或維持 30px 也可以 */
 }
 
 /* ===== 4. 表單與按鈕 ===== */
@@ -168,12 +168,11 @@ button.outline:hover {
 }
 
 /* ===== 5. 圖片與標籤 ===== */
+/* 修改：圖片改為 2:3 直式海報比例 (Bangumi 標準格式) */
 .anime-cover {
   width: 100%;
-  /* 刪除原本的 height: 280px */
-  /* height: auto; */
-  aspect-ratio: 16 / 9; /* 【關鍵】自動計算高度為 16:9 */
-  object-fit: cover;    /* 填滿窗口，多餘的會裁切掉 */
+  aspect-ratio: 2 / 3; /* 【關鍵修改】從 16/9 改為 2/3 */
+  object-fit: cover;
   border-radius: 10px;
   margin-bottom: 15px;
   background-color: #1e293b;
@@ -362,64 +361,76 @@ button.outline:hover {
     color: var(--accent-color);
 }
 
-/* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
-/* ===== 9. 手機版響應式設定 (Max Width 768px) ===== */
-/* ===== 手機版響應式設定 (Max Width 768px) ===== */
+/* =========================================
+   響應式斷點設定 (由大到小排列)
+   ========================================= */
+
+/* 1. 中型螢幕/筆電 (1200px 以下)：從 4 欄變成 3 欄 */
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 2. 平板直立 (900px 以下)：從 3 欄變成 2 欄 */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* 3. 手機版 (768px 以下)：這裡是你原本的設定，我保留了所有功能 */
 @media (max-width: 768px) {
   
-  /* 1. 導覽列變為垂直排列 */
+  /* --- 導覽列與登入區塊修正 --- */
   nav {
     flex-direction: column;
     gap: 15px;
   }
 
-  /* 2. 登入區塊取消絕對定位，讓它自然流動 */
   .login-container {
-    position: static; /* 手機版取消 absolute，讓它跟著排 */
+    position: static; 
     margin-top: 10px;
-    width: 100%;       /* 讓區塊佔滿寬度 */
-    justify-content: center; /* 讓裡面的按鈕置中 */
+    width: 100%;       
+    justify-content: center;
   }
 
-  /* 3. 讓小型按鈕在手機上變回好按的大按鈕 */
+  /* --- 按鈕優化 --- */
   .btn-sm,
   .history-item button,
   #manageList button {
     width: 100% !important;
     padding: 10px 20px;
     font-size: 1rem;
-    margin-top: 10px !important; /* 手機版按鈕上方加點距離 */
+    margin-top: 10px !important;
     margin-bottom: 0 !important;
   }
 
-  /* 4. 列表項目 (歷史紀錄/管理) 改為垂直排列 */
+  /* --- 列表排版優化 --- */
   .history-item,
   #manageList > .glass-card {
     flex-direction: column;
-    align-items: stretch; /* 讓內容撐滿寬度 */
-    text-align: center;   /* 手機版文字置中比較好看 */
+    align-items: stretch;
+    text-align: center;
     gap: 10px;
   }
   
-  /* 微調：確保管理頁面的按鈕群組在手機上也置中 */
   #manageList > .glass-card > div:last-child {
     width: 100%;
     justify-content: center;
   }
 
-  /* ===== 5. 新增：解決緊湊感與排版問題 ===== */
-  
-  /* 手機版增加左右邊距，解決「太貼邊」的問題 */
+  /* --- 版面間距與 Grid 設定 --- */
   .container {
     padding: 20px 30px; 
   }
 
-  /* 手機版強制改回單欄排列 (避免變成 3 欄擠在一起) */
+  /* 手機版維持 1 欄 (大圖模式) */
+  /* 如果你覺得直式海報在手機上一行一張太大，可以改成 repeat(2, 1fr) 變兩張 */
   .grid {
     grid-template-columns: 1fr;
   }
-
-}/* <--- ⚠️ 這個大括號非常重要！一定要有，否則電腦版會壞掉 */
+}
 
 /* ===== 10. API 搜尋功能樣式 ===== */
 
