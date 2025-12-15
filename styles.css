@@ -566,3 +566,10 @@ select option {
     0%, 100% { transform: scale(1.05); }
     50% { transform: scale(1.15); }
 }
+
+/* ===== 紀錄頁面排版修正 ===== */
+#animeGrid .glass-card {
+  display: flex;
+  flex-direction: column; /* 內容垂直排列 */
+  height: 100%;           /* 強制卡片高度撐滿整個 Grid 區塊 */
+}
