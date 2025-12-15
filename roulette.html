@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <title>幸運輪盤 - Anime Input</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <nav>
+        <a href="index.html">新增</a>
+        <a href="dashboard.html">紀錄</a>
+        <a href="roulette.html" class="active">輪盤</a> <a href="manage.html">管理</a>
+        <a href="overview.html">總覽</a>
+
+        <div class="login-container">
+            <span id="userInfo" style="font-size: 0.9rem; color: var(--accent-color);"></span>
+            <button id="loginBtn" onclick="googleLogin()" class="btn-sm" style="background: var(--text-primary); color: var(--bg-color);">
+                Google 登入
+            </button>
+            <button id="logoutBtn" onclick="googleLogout()" class="btn-sm danger" style="display: none;">
+                登出
+            </button>
+        </div>
+    </nav>
+
+    <div class="container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh;">
+        
+        <div class="glass-card" style="text-align: center; max-width: 500px; width: 100%; padding: 40px 20px;">
+            <h2 style="margin-bottom: 20px; color: var(--accent-color);">✨ 命運的選擇 ✨</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 30px;">
+                不知道該看哪一部？<br>從「未看完」的清單中隨機抽選！
+            </p>
+
+            <div id="roulette-display" class="roulette-box">
+                ?
+            </div>
+
+            <button id="spinBtn" onclick="startRoulette()" style="margin-top: 30px; padding: 15px 40px; font-size: 1.2rem; width: 100%;">
+                開始抽選
+            </button>
+
+            <div id="result-area" style="margin-top: 20px; display: none; opacity: 0; transition: opacity 0.5s;">
+                <img id="result-img" src="" style="width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 10px; margin-bottom: 15px; box-shadow: 0 0 20px var(--accent-color);">
+                <h3 id="result-title" style="font-size: 1.5rem;"></h3>
+                <p id="result-progress" style="color: var(--text-secondary);"></p>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module" src="firebase-init.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
