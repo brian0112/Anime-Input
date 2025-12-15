@@ -622,6 +622,105 @@ function importFromJSON(event) {
     reader.readAsText(file);
 }
 
+// ==========================================
+// 🔥 V11.0 新增：輪盤抽籤功能 🔥
+// ==========================================
+
+let rouletteInterval = null;
+let isSpinning = false;
+
+async function startRoulette() {
+    if (isSpinning) return; // 防止重複點擊
+    
+    const display = document.getElementById('roulette-display');
+    const resultArea = document.getElementById('result-area');
+    const btn = document.getElementById('spinBtn');
+    
+    // 1. 準備資料
+    const data = await loadData();
+    // 篩選條件：還沒看完的動畫 (進度 < 總集數)
+    const candidates = data.filter(anime => {
+        const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
+        return watched < anime.total;
+    });
+
+    if (candidates.length === 0) {
+        return alert("恭喜你！所有動畫都看完了，沒得抽啦！快去新增幾部吧！");
+    }
+
+    if (candidates.length === 1) {
+        return alert(`只剩下一部《${candidates[0].title}》，不用抽了，直接看吧！`);
+    }
+
+    // 2. 開始轉動
+    isSpinning = true;
+    btn.disabled = true;
+    btn.textContent = "抽選中...";
+    resultArea.style.display = 'none';
+    resultArea.style.opacity = '0';
+    
+    display.classList.remove('winner');
+    display.classList.add('spinning');
+
+    // 3. 動畫邏輯：快速切換文字
+    let counter = 0;
+    let speed = 50; // 初始速度 (毫秒)
+    
+    // 播放音效 (選用，目前先不加)
+    
+    // 建立一個遞迴的 timeout 來模擬減速效果
+    function spinLoop() {
+        // 隨機選一個顯示
+        const randomAnime = candidates[Math.floor(Math.random() * candidates.length)];
+        display.textContent = randomAnime.title;
+        
+        counter++;
+        
+        // 前 30 次快速轉動，之後開始減速
+        if (counter > 30) speed += 20; 
+        if (counter > 40) speed += 50;
+
+        if (counter < 50) {
+            // 繼續轉
+            setTimeout(spinLoop, speed);
+        } else {
+            // 4. 停止 (中獎)
+            finishSpin(randomAnime);
+        }
+    }
+
+    spinLoop();
+}
+
+function finishSpin(winner) {
+    const display = document.getElementById('roulette-display');
+    const resultArea = document.getElementById('result-area');
+    const btn = document.getElementById('spinBtn');
+    
+    // 顯示中獎者
+    display.textContent = winner.title;
+    display.classList.remove('spinning');
+    display.classList.add('winner');
+    
+    // 顯示詳細資訊
+    const watched = winner.history.length > 0 ? Math.max(...winner.history.map(h => h.end)) : 0;
+    document.getElementById('result-title').textContent = winner.title;
+    document.getElementById('result-img').src = winner.image;
+    document.getElementById('result-progress').textContent = `目前進度: 第 ${watched} / ${winner.total} 集`;
+    
+    // 淡入顯示結果區
+    resultArea.style.display = 'block';
+    // 稍微延遲一點讓 display:block 生效後再加 opacity
+    setTimeout(() => {
+        resultArea.style.opacity = '1';
+    }, 50);
+
+    // 重置按鈕
+    isSpinning = false;
+    btn.disabled = false;
+    btn.textContent = "再抽一次";
+}
+
 // ===== 初始化 =====
 window.onload = function() {
     refreshAll();
