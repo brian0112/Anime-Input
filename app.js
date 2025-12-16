@@ -914,65 +914,77 @@ async function quickAddFromExplore(item, weekdayIndex) {
 // 🔥 V13.0 新增：個人名片與成就系統 🔥
 // ==========================================
 
-// 定義成就列表
-const ACHIEVEMENTS = [
-    { id: 'first_blood', icon: '🌱', title: '初次見面', desc: '成功收藏第 1 部動畫', check: (data) => data.length >= 1 },
-    { id: 'veteran', icon: '🎓', title: '追番達人', desc: '收藏超過 10 部動畫', check: (data) => data.length >= 10 },
-    { id: 'master', icon: '👑', title: '次元觀測者', desc: '收藏超過 50 部動畫', check: (data) => data.length >= 50 },
-    { id: 'binge', icon: '🔥', title: '肝帝', desc: '總觀看集數超過 100 集', check: (data, totalEps) => totalEps >= 100 },
-    { id: 'seasonal', icon: '📅', title: '追新番', desc: '正在追每週更新的動畫', check: (data) => data.some(a => a.weekday >= 0) },
-    { id: 'completed', icon: '✅', title: '完食', desc: '看完至少 1 部動畫', check: (data) => data.some(a => {
-        const watched = a.history.length > 0 ? Math.max(...a.history.map(h => h.end)) : 0;
-        return watched >= a.total && a.total > 0;
-    })}
-];
-
 async function loadProfile() {
-    // 檢查元素是否存在 (避免在其他頁面報錯)
     if (!document.getElementById('profile-card')) return;
 
     const data = await loadData();
     
-    // 1. 計算數據
+    // 1. 基礎數據計算
     const totalAnimes = data.length;
     let totalEps = 0;
+    let completedCount = 0; // 完食數
+    
     data.forEach(anime => {
         const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
         totalEps += watched;
+        
+        // 判斷是否完食 (觀看 >= 總集數 且 總集數 > 0)
+        if (anime.total > 0 && watched >= anime.total) {
+            completedCount++;
+        }
     });
-    // 假設每集 24 分鐘，換算成小時
+    
     const totalHours = Math.round((totalEps * 24) / 60);
 
-    // 2. 更新 DOM 數據
+    // 2. 更新畫面數據
     document.getElementById('stat-count').textContent = totalAnimes;
     document.getElementById('stat-ep').textContent = totalEps;
     document.getElementById('stat-time').textContent = totalHours + 'h';
 
-    // 3. 設定個人資訊
+    // 3. 設定個人資訊 (Google)
     if (window.currentUser) {
         document.getElementById('profile-name').textContent = window.currentUser.displayName;
         document.getElementById('profile-avatar').src = window.currentUser.photoURL;
     }
 
-    // 4. 計算稱號 (Level)
+    // 4. 計算稱號 (根據總集數)
     const titleEl = document.getElementById('profile-title');
     if (totalEps < 50) titleEl.textContent = "LV.1 萌新觀眾";
     else if (totalEps < 200) titleEl.textContent = "LV.10 資深宅宅";
+    else if (totalEps < 500) titleEl.textContent = "LV.30 追番狂人";
     else if (totalEps < 1000) titleEl.textContent = "LV.50 番劇鑑賞家";
+    else if (totalEps < 5000) titleEl.textContent = "LV.80 次元領主";
     else titleEl.textContent = "LV.99 傳說中的御宅族";
 
-    // 5. 處理徽章 (Badges) 與 列表
+    // 5. 【核心修改】讀取 achievements.js 並判斷
     const badgeContainer = document.getElementById('badge-container');
     const listContainer = document.getElementById('achievements-list');
     
     badgeContainer.innerHTML = '';
     listContainer.innerHTML = '';
 
-    ACHIEVEMENTS.forEach(ach => {
-        // 檢查是否達成
-        const isUnlocked = ach.check(data, totalEps);
+    // 從 window 物件讀取成就資料庫
+    const achievements = window.ACHIEVEMENT_DB || [];
 
-        // A. 如果達成，加入名片上的徽章區
+    achievements.forEach(ach => {
+        let isUnlocked = false;
+
+        // 根據 type 自動判斷 (減少重複代碼)
+        if (ach.type === 'collection') {
+            isUnlocked = totalAnimes >= ach.threshold;
+        } else if (ach.type === 'episodes') {
+            isUnlocked = totalEps >= ach.threshold;
+        } else if (ach.type === 'time') {
+            isUnlocked = totalHours >= ach.threshold;
+        } else if (ach.type === 'completed') {
+            isUnlocked = completedCount >= ach.threshold;
+        } else if (ach.check) {
+            // 特殊成就使用自定義 check 函式
+            isUnlocked = ach.check(data);
+        }
+
+        // A. 顯示徽章 (只顯示已獲得的，且為了版面，你可以選擇只顯示"最高級"的，或全部顯示)
+        // 這裡目前的邏輯是全部顯示
         if (isUnlocked) {
             const badge = document.createElement('div');
             badge.className = 'badge';
@@ -980,7 +992,7 @@ async function loadProfile() {
             badgeContainer.appendChild(badge);
         }
 
-        // B. 加入下方的成就說明列表
+        // B. 顯示列表 (包含未解鎖)
         const item = document.createElement('div');
         item.className = `achievement-item ${isUnlocked ? '' : 'locked'}`;
         item.innerHTML = `
