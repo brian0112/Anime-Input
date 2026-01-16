@@ -859,42 +859,54 @@ select option {
 }
 
 /* =============================================
-   🔥 強制修復：橫向捲動區塊 (放在檔案最下方)
+   🔥 V2 強制修復：按鈕置中與捲動優化
    ============================================= */
 
-/* 1. 強制容器「橫向排列」且「不換行」 */
+/* 1. 通用設定：預設為「置中排列」 */
 .tabs-container, 
 .filter-group {
     display: flex !important;
-    flex-direction: row !important; /* 強制橫排 */
-    flex-wrap: nowrap !important;   /* 禁止換行 */
-    overflow-x: auto !important;    /* 開啟滑動 */
-    justify-content: flex-start !important; /* 靠左對齊 */
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    
+    /* 【關鍵修改】電腦版預設置中 */
+    justify-content: center !important; 
+    
     width: 100%;
-    padding-bottom: 5px; /* 預留捲軸空間 */
-    gap: 10px; /* 按鈕之間的距離 */
+    padding-bottom: 5px;
+    gap: 10px;
 }
 
-/* 2. 強制按鈕「恢復自動寬度」 (解決變成一條長條的問題) */
+/* 2. 按鈕設定：縮回正常大小 */
 .tab-btn, 
 .filter-btn {
-    width: auto !important;      /* 【關鍵】取消 100% 寬度，改回依文字長度 */
-    flex: 0 0 auto !important;   /* 禁止被壓縮或拉伸 */
+    width: auto !important;      /* 強制取消 100% 寬度 */
+    flex: 0 0 auto !important;   /* 禁止被拉伸 */
     min-width: auto !important;
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    margin: 0 !important;        /* 清除多餘邊距 */
+    margin: 0 !important;
 }
 
-/* 3. 再次確保捲軸隱藏 (針對各瀏覽器) */
+/* 3. 手機版響應式設定 (768px 以下) */
+@media (max-width: 768px) {
+    .tabs-container, 
+    .filter-group {
+        /* 【關鍵修改】手機版改回靠左，確保可以完整滑動 */
+        justify-content: flex-start !important;
+        padding-left: 5px; /* 左邊留點空隙比較好看 */
+    }
+}
+
+/* 4. 隱藏醜醜的捲軸 */
 .tabs-container::-webkit-scrollbar,
 .filter-group::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Edge */
-    height: 0;
+    display: none;
 }
 .tabs-container, 
 .filter-group {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
