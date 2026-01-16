@@ -263,43 +263,89 @@ async function addAnime(e) {
 // 2. 紀錄頁面 (Dashboard)
 let currentAnimeId = null;
 
+let currentFilter = 'all'; // 預設顯示全部
+
+// 1. 切換篩選器
+function filterDashboard(type) {
+    currentFilter = type;
+    
+    // 更新按鈕亮燈狀態
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        if (btn.getAttribute('onclick').includes(`'${type}'`)) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // 重新載入列表
+    loadDashboard();
+}
+
 async function loadDashboard() {
     const list = document.getElementById('animeGrid');
     if (!list) return;
 
     list.innerHTML = '<p style="grid-column:1/-1; text-align:center;">載入中...</p>';
-    const data = await loadData();
-    list.innerHTML = '';
+    
+    let data = await loadData(); // 讀取所有資料
+    
+    // --- 搜尋過濾 (既有的) ---
+    const searchInput = document.getElementById('searchInput'); // 假設你有給搜尋框 id
+    if (searchInput && searchInput.value) {
+        const keyword = searchInput.value.toLowerCase();
+        data = data.filter(a => a.title.toLowerCase().includes(keyword));
+    }
 
+    // --- 【新增】狀態過濾 ---
+    if (currentFilter !== 'all') {
+        data = data.filter(anime => {
+            const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
+            
+            if (currentFilter === 'watching') {
+                // 追番中：看過大於0 且 還沒看完
+                return watched > 0 && watched < anime.total;
+            } else if (currentFilter === 'completed') {
+                // 已看完：看過等於總集數 (且總集數不為0)
+                return anime.total > 0 && watched >= anime.total;
+            } else if (currentFilter === 'planned') {
+                // 尚未看：完全沒進度
+                return watched === 0;
+            }
+            return true;
+        });
+    }
+
+    list.innerHTML = '';
     if (data.length === 0) {
-        list.innerHTML = '<p style="text-align:center; grid-column:1/-1; opacity:0.6;">目前沒有動畫，去新增一部吧！</p>';
+        list.innerHTML = '<p style="text-align:center; grid-column:1/-1; opacity:0.6;">沒有符合條件的動畫</p>';
         return;
     }
 
+    // (以下保持原本的渲染卡片邏輯，不變)
     data.sort((a, b) => b.id - a.id);
-
     data.forEach(anime => {
+        // ... (貼上你原本的卡片生成程式碼) ...
         const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
         let progress = Math.round((watched / anime.total) * 100);
         if (progress > 100) progress = 100;
 
         const card = document.createElement('div');
         card.className = 'glass-card';
-        // 注意看下面那個 <div> 的 style，我加入了 margin-top: auto;
+        card.style.display = 'flex'; 
+        card.style.flexDirection = 'column';
+        card.style.height = '100%';
+
         card.innerHTML = `
             <img src="${anime.image}" class="anime-cover" onerror="this.src='https://placehold.co/600x400?text=Error'">
-            
             <h3 style="margin:0 0 10px 0;">${anime.title}</h3>
-            
             <div style="display:flex; justify-content:space-between; margin-bottom:10px; color:var(--text-secondary); font-size:0.9rem; margin-top: auto;">
                 <span>進度: ${watched}/${anime.total}</span>
                 <span>${progress}%</span>
             </div>
-            
             <div style="background:rgba(255,255,255,0.1); height:8px; border-radius:4px; overflow:hidden; margin-bottom:15px; width:100%;">
                 <div style="background:var(--success-color); width:${progress}%; height:100%; transition:width 0.5s ease; min-width:${progress > 0 ? '5px' : '0'};"></div>
             </div>
-            
             <div style="display:flex; gap:10px;">
                 <button onclick="openUpdateModal(${anime.id}, ${watched}, ${anime.total})">更新進度</button>
                 <button class="outline" onclick="openHistoryModal(${anime.id})">紀錄</button>
