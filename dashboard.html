@@ -33,6 +33,12 @@
         <div class="search-box" style="margin-bottom: 20px;">
             <input type="text" id="searchInput" placeholder="🔍 搜尋動畫名稱..." onkeyup="searchAnime()">
         </div>
+        <div class="filter-group" style="display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px;">
+            <button class="filter-btn active" onclick="filterDashboard('all')">全部</button>
+            <button class="filter-btn" onclick="filterDashboard('watching')">📺 觀看中</button>
+            <button class="filter-btn" onclick="filterDashboard('completed')">✅ 已看完</button>
+            <button class="filter-btn" onclick="filterDashboard('planned')">🌱 未觀看</button>
+        </div>
         <div id="animeGrid" class="grid"></div>
     </div>
 
