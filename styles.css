@@ -804,3 +804,19 @@ select option {
     border-color: var(--accent-color);
     font-weight: bold;
 }
+
+/* ===== 管理頁面列表優化 (新增在檔案最下方) ===== */
+#manageList {
+    max-height: 70vh;   /* 限制高度為螢幕的 70% */
+    overflow-y: auto;   /* 超過高度時顯示垂直卷軸 */
+    padding-right: 5px; /* 避免卷軸蓋住內容 */
+}
+
+/* 美化卷軸 (Webkit瀏覽器: Chrome, Edge, Safari) */
+#manageList::-webkit-scrollbar {
+    width: 6px;
+}
+#manageList::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 3px;
+}
