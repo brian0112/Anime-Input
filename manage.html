@@ -56,9 +56,14 @@
             </div>
         </div>
 
-        <div class="glass-card">
-            <h3>管理動畫清單</h3>
-            <div id="manageList"></div>
+        <div class="container">
+            <h2 style="...">管理動畫清單</h2>
+
+            <input type="text" id="manageSearch" placeholder="搜尋動畫..." oninput="loadManage()" 
+                style="width: 100%; padding: 12px; margin-bottom: 20px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color: white;">
+
+            <div id="manageList" style="display: flex; flex-direction: column; gap: 15px;">
+                </div>
         </div>
 
         <div id="editModal" class="modal-overlay">
