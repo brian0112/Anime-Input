@@ -252,14 +252,25 @@ button.outline:hover {
 }
 
 /* ===== 7. 列表項目樣式 (歷史紀錄/管理頁面) ===== */
-.history-item, 
-#manageList > .glass-card {
-  display: flex;
-  justify-content: space-between; /* 內容左右撐開 */
-  align-items: center;            /* 關鍵：垂直置中 */
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  gap: 15px;
+/* 修改 styles.css 中的 .history-item */
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--glass-border);
+    
+    /* 【新增】這兩行是解藥 */
+    overflow-x: hidden; /* 強制隱藏水平卷軸 */
+    width: 100%;        /* 確保寬度穩定 */
+}
+
+/* 另外檢查刪除按鈕是否有 transform */
+.history-item button:hover {
+    /* 確保 hover 時不要讓按鈕變大導致撐開容器 */
+    transform: none; 
+    /* 或者如果原本有 scale(1.05)，請確保外層有足夠 padding */
 }
 
 /* 針對管理頁面的特殊調整 */
