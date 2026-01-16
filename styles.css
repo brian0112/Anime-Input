@@ -857,3 +857,44 @@ select option {
     background: var(--glass-border);
     border-radius: 3px;
 }
+
+/* =============================================
+   🔥 強制修復：橫向捲動區塊 (放在檔案最下方)
+   ============================================= */
+
+/* 1. 強制容器「橫向排列」且「不換行」 */
+.tabs-container, 
+.filter-group {
+    display: flex !important;
+    flex-direction: row !important; /* 強制橫排 */
+    flex-wrap: nowrap !important;   /* 禁止換行 */
+    overflow-x: auto !important;    /* 開啟滑動 */
+    justify-content: flex-start !important; /* 靠左對齊 */
+    width: 100%;
+    padding-bottom: 5px; /* 預留捲軸空間 */
+    gap: 10px; /* 按鈕之間的距離 */
+}
+
+/* 2. 強制按鈕「恢復自動寬度」 (解決變成一條長條的問題) */
+.tab-btn, 
+.filter-btn {
+    width: auto !important;      /* 【關鍵】取消 100% 寬度，改回依文字長度 */
+    flex: 0 0 auto !important;   /* 禁止被壓縮或拉伸 */
+    min-width: auto !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;        /* 清除多餘邊距 */
+}
+
+/* 3. 再次確保捲軸隱藏 (針對各瀏覽器) */
+.tabs-container::-webkit-scrollbar,
+.filter-group::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Edge */
+    height: 0;
+}
+.tabs-container, 
+.filter-group {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
