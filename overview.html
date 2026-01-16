@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <title>統計總覽 - Anime Input</title>
@@ -33,6 +33,7 @@
 
     <div class="container">
         <h1>儀表板</h1>
+
         <div class="glass-card" style="margin-bottom: 30px; border-left: 5px solid var(--accent-color);">
             <h3 id="todayTitle">📅 今日放送</h3>
             <div id="todayList" style="margin-top: 15px; display: flex; flex-wrap: wrap; gap: 15px;">
@@ -63,25 +64,27 @@
                 </div>
             </div>
         </div>
-        </div>
-        <div class="glass-card" style="margin-top: 30px; max-width: 1000px; margin-left: auto; margin-right: auto;">
-            <h4>🔥 觀影熱力圖 (過去一年)</h4>
+        <div class="glass-card" style="margin-top: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; margin-bottom: 15px;">
+                <h4 style="margin: 0;">🔥 觀影熱力圖 (過去一年)</h4>
+                <div style="display:flex; gap:5px; align-items:center; font-size:0.8rem; color:var(--text-secondary);">
+                    <span>Less</span>
+                    <div class="day-square level-0" style="width: 10px; height: 10px;"></div>
+                    <div class="day-square level-2" style="width: 10px; height: 10px;"></div>
+                    <div class="day-square level-4" style="width: 10px; height: 10px;"></div>
+                    <span>More</span>
+                </div>
+            </div>
+            
             <div id="heatmap" class="heatmap-container"></div>
         </div>
-            <div style="display:flex; gap:5px; align-items:center; font-size:0.8rem; color:var(--text-secondary); margin-top:10px; justify-content: flex-end;">
-                <span>Less</span>
-                <div class="day-square level-0"></div>
-                <div class="day-square level-2"></div>
-                <div class="day-square level-4"></div>
-                <span>More</span>
-            </div>
-        </div>
-        <div class="glass-card" style="margin-top: 30px; max-width: 1000px; margin-left: auto; margin-right: auto;">
+
+        <div class="glass-card" style="margin-top: 30px;">
             <h4>🕘 近期活動日誌</h4>
             <div id="activityList"></div>
         </div>
-    </div>
-    <script type="module" src="firebase-init.js"></script>
+
+    </div> <script type="module" src="firebase-init.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
