@@ -434,21 +434,40 @@ async function deleteHistory(historyId) {
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
 // 3. 管理頁面 (Manage)
+// 修改 app.js 中的 loadManage 函式
+
 async function loadManage() {
     const list = document.getElementById('manageList');
+    const searchInput = document.getElementById('manageSearch'); // 取得搜尋框
     if (!list) return;
     
-    list.innerHTML = '<p>載入中...</p>';
-    const data = await loadData();
+    // 取得資料
+    let data = await loadData();
+    
+    // 【新增】過濾資料
+    if (searchInput && searchInput.value) {
+        const keyword = searchInput.value.toLowerCase();
+        data = data.filter(a => a.title.toLowerCase().includes(keyword));
+    }
+
     list.innerHTML = '';
+    
+    if(data.length === 0) {
+        list.innerHTML = '<p style="text-align:center; opacity:0.6;">找不到動畫</p>';
+        return;
+    }
 
     data.forEach(anime => {
         const item = document.createElement('div');
         item.className = 'glass-card';
-        // 手機版樣式由 CSS 處理，這裡只需基本的
+        // 確保卡片排版
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.justifyContent = 'space-between';
+
         item.innerHTML = `
-            <div style="font-weight:500; flex:1;">${anime.title}</div>
-            <div style="display:flex; gap:10px;">
+            <div style="font-weight:500; flex:1; margin-right: 15px;">${anime.title}</div>
+            <div style="display:flex; gap:10px; flex-shrink: 0;">
                 <button class="btn-sm" style="background:var(--accent-color); color:var(--bg-color);" onclick="openEditModal(${anime.id})">編輯</button>
                 <button class="danger btn-sm" onclick="deleteAnime(${anime.id})">刪除</button>
             </div>
