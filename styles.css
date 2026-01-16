@@ -775,3 +775,21 @@ select option {
     opacity: 0.5;
     filter: grayscale(1);
 }
+
+/* ===== 紀錄頁面篩選按鈕 ===== */
+.filter-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    white-space: nowrap; /* 防止手機版換行 */
+}
+
+.filter-btn.active {
+    background: var(--accent-color);
+    color: var(--bg-color);
+    border-color: var(--accent-color);
+    font-weight: bold;
+}
