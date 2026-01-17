@@ -119,15 +119,22 @@ function getWeekOptions() {
 let currentSearchResults = [];
 
 // 1. 搜尋函式
+// 修改 app.js 中的 searchBangumi 函式
+
 async function searchBangumi() {
-    const query = document.getElementById('searchQuery').value;
+    // 【修正點】這裡原本是 'searchQuery'，改成你的 HTML 實際使用的 id 'title'
+    const queryInput = document.getElementById('title'); 
+    const query = queryInput ? queryInput.value : '';
+
     if (!query) return alert("請輸入關鍵字！");
 
     const resultArea = document.getElementById('searchResults');
+    // 開啟搜尋視窗
+    document.getElementById('searchModal').classList.add('active'); 
+    
     resultArea.innerHTML = '<p style="text-align:center;">搜尋中...</p>';
 
     try {
-        // 使用 large 模式以獲取更多資訊 (雖然 search API 的 tags 還是較少，但聊勝於無)
         const url = `https://api.bgm.tv/search/subject/${encodeURIComponent(query)}?type=2&responseGroup=large&max_results=20`;
         const response = await fetch(url);
         const data = await response.json();
@@ -146,14 +153,12 @@ async function searchBangumi() {
             let imgUrl = item.images ? (item.images.large || item.images.common) : '';
             if (imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
 
-            // 顯示卡片
             const card = document.createElement('div');
             card.className = 'glass-card';
             card.style.cursor = 'pointer';
             card.style.textAlign = 'center';
             card.style.padding = '10px';
             
-            // 直接傳遞 index，去全域變數抓資料
             card.onclick = () => selectAnimeFromAPI(index);
 
             card.innerHTML = `
