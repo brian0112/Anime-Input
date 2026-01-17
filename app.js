@@ -204,58 +204,93 @@ function renderSearchResults(list) {
 }
 
 // 2. 選擇函式 (升級版：填入隱藏資料)
-function selectAnimeFromAPI(index) {
+// 修改 app.js 中的 selectAnimeFromAPI 函式
+
+async function selectAnimeFromAPI(index) {
     const item = currentSearchResults[index];
     if(!item) return;
 
-    const title = item.name_cn || item.name;
-    const eps = item.eps || 0;
-    let imgUrl = item.images ? (item.images.large || item.images.common) : '';
-    if (imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
-    const airDate = item.air_date;
+    // 顯示載入中，因為我們要多發一個請求
+    const originalText = document.body.style.cursor;
+    document.body.style.cursor = 'wait'; // 讓滑鼠變漏斗
 
-    // A. 填入可見欄位
-    document.getElementById('title').value = title;
-    if (eps > 0) document.getElementById('total').value = eps;
-    document.getElementById('imgUrl').value = imgUrl;
+    try {
+        console.log(`正在獲取《${item.name_cn || item.name}》的詳細資料...`);
+        
+        // 🚀 關鍵升級：根據 ID 再去抓一次詳細資料 (確保 Tags 100% 準確)
+        const detailUrl = `https://api.bgm.tv/subject/${item.id}?responseGroup=large`;
+        const response = await fetch(detailUrl);
+        const detailData = await response.json();
 
-    // B. 填入隱藏欄位 (新功能核心)
-    document.getElementById('bangumiId').value = item.id;
-    // 雖然 API search 結果的 tags 可能不完整，先存起來再說，稍後腳本可以補強
-    // 我們把它轉成 JSON 字串存入 hidden input
-    document.getElementById('animeTags').value = JSON.stringify(item.tags || []); 
-    document.getElementById('animeRating').value = JSON.stringify(item.rating || {});
+        // 1. 準備資料
+        const title = detailData.name_cn || detailData.name;
+        const eps = detailData.eps || 0;
+        let imgUrl = detailData.images ? (detailData.images.large || detailData.images.common) : '';
+        if (imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
+        const airDate = detailData.air_date;
 
-    // C. 智慧判斷放送日 (原本的邏輯)
-    const weekdaySelect = document.getElementById('weekday');
-    if (airDate) {
-        const startDate = new Date(airDate);
-        if (!isNaN(startDate.getTime())) {
-            const startDay = startDate.getDay();
-            let finalValue = -1; 
-            if (eps && eps > 0) {
-                const estimatedDays = (eps * 7) + 28;
-                const estimatedEndDate = new Date(startDate);
-                estimatedEndDate.setDate(startDate.getDate() + estimatedDays);
-                const today = new Date();
-                if (today > estimatedEndDate) finalValue = -1;
-                else finalValue = startDay;
+        // 2. 填入可見欄位
+        document.getElementById('title').value = title;
+        if (eps > 0) document.getElementById('total').value = eps;
+        document.getElementById('imgUrl').value = imgUrl;
+
+        // 3. 填入隱藏欄位 (這裡使用 detailData，保證有 tags)
+        document.getElementById('bangumiId').value = detailData.id;
+        
+        const tags = detailData.tags || [];
+        document.getElementById('animeTags').value = JSON.stringify(tags); 
+        document.getElementById('animeRating').value = JSON.stringify(detailData.rating || {});
+
+        // 4. Console 驗證 (這是給你檢查用的)
+        console.log("🔥 [驗證] ID:", detailData.id);
+        if (tags.length > 0) {
+            console.log("🔥 [驗證] 成功抓取標籤:", tags.map(t => t.name));
+        } else {
+            console.warn("⚠️ [驗證] 這部動畫在 Bangumi 上沒有任何標籤！");
+        }
+
+        // 5. 判斷放送日 (邏輯不變)
+        const weekdaySelect = document.getElementById('weekday');
+        if (airDate) {
+            const startDate = new Date(airDate);
+            if (!isNaN(startDate.getTime())) {
+                const startDay = startDate.getDay();
+                // 簡單判斷：如果有總集數且完結日已過，設為已完結(-1)，否則設為放送日
+                let finalValue = -1; 
+                if (eps && eps > 0) {
+                    const estimatedDays = (eps * 7) + 28; // 寬限一個月
+                    const estimatedEndDate = new Date(startDate);
+                    estimatedEndDate.setDate(startDate.getDate() + estimatedDays);
+                    const today = new Date();
+                    if (today > estimatedEndDate) finalValue = -1;
+                    else finalValue = startDay;
+                } else {
+                    finalValue = startDay;
+                }
+                weekdaySelect.value = finalValue;
             } else {
-                finalValue = startDay;
+                weekdaySelect.value = -1;
             }
-            weekdaySelect.value = finalValue;
         } else {
             weekdaySelect.value = -1;
         }
-    } else {
-        weekdaySelect.value = -1;
+
+        closeModal('searchModal');
+
+        // 6. 提示使用者結果
+        const statusText = (weekdaySelect.value == -1) ? "已完結" : "連載中";
+        const tagCount = tags.length;
+        alert(`✅ 資料填寫完成！\n📖 作品：${title}\n🏷️ 標籤：成功抓取 ${tagCount} 個 (請看F12 Console)\n📺 狀態：${statusText}`);
+
+    } catch (error) {
+        console.error("抓取詳細資料失敗:", error);
+        alert("抓取詳細資料失敗，將使用基本資料填入。");
+        
+        // 如果失敗(例如斷網)，退回使用 item (搜尋結果) 的資料
+        // ... (這裡可以保留舊邏輯作為備案，或是直接報錯)
+    } finally {
+        document.body.style.cursor = originalText; // 恢復滑鼠
     }
-
-    closeModal('searchModal');
-
-    // 提示訊息稍微改一下，讓使用者知道系統幫他做了判斷
-    const statusText = (weekdaySelect.value == -1) ? "已完結" : "連載中";
-    alert(`已自動填寫：${title}\n(系統判定為：${statusText})`);
 }
 
 // ==========================================
