@@ -115,31 +115,61 @@ function getWeekOptions() {
 // 🔥 V10.0 新增：Bangumi API 搜尋功能 🔥
 // ==========================================
 
+// 暫存搜尋結果，避免在 onclick 傳遞大量資料
+let currentSearchResults = [];
+
+// 1. 搜尋函式
 async function searchBangumi() {
-    const input = document.getElementById('title');
-    const query = input.value.trim();
-    
-    if (!query) return alert("請先輸入關鍵字！");
-    
-    const modal = document.getElementById('searchModal');
-    const resultsContainer = document.getElementById('searchResults');
-    
-    modal.classList.add('active');
-    resultsContainer.innerHTML = '<p style="text-align:center; grid-column:1/-1;">🚀 正在前往 Bangumi 搜尋...</p>';
-    
+    const query = document.getElementById('searchQuery').value;
+    if (!query) return alert("請輸入關鍵字！");
+
+    const resultArea = document.getElementById('searchResults');
+    resultArea.innerHTML = '<p style="text-align:center;">搜尋中...</p>';
+
     try {
+        // 使用 large 模式以獲取更多資訊 (雖然 search API 的 tags 還是較少，但聊勝於無)
         const url = `https://api.bgm.tv/search/subject/${encodeURIComponent(query)}?type=2&responseGroup=large&max_results=20`;
         const response = await fetch(url);
         const data = await response.json();
-        
+
         if (!data.list || data.list.length === 0) {
-            resultsContainer.innerHTML = '<p style="text-align:center; grid-column:1/-1;">找不到相關動畫，請嘗試其他關鍵字。</p>';
+            resultArea.innerHTML = '<p style="text-align:center;">找不到相關結果。</p>';
             return;
         }
-        renderSearchResults(data.list);
+
+        // 存入全域變數
+        currentSearchResults = data.list;
+
+        resultArea.innerHTML = '';
+        data.list.forEach((item, index) => {
+            const title = item.name_cn || item.name;
+            let imgUrl = item.images ? (item.images.large || item.images.common) : '';
+            if (imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
+
+            // 顯示卡片
+            const card = document.createElement('div');
+            card.className = 'glass-card';
+            card.style.cursor = 'pointer';
+            card.style.textAlign = 'center';
+            card.style.padding = '10px';
+            
+            // 直接傳遞 index，去全域變數抓資料
+            card.onclick = () => selectAnimeFromAPI(index);
+
+            card.innerHTML = `
+                <img src="${imgUrl || 'https://placehold.co/300x450?text=No+Image'}" style="width:100%; aspect-ratio:2/3; object-fit:cover; border-radius:5px;">
+                <h4 style="margin:10px 0 5px 0; font-size:0.9rem;">${title}</h4>
+                <div style="font-size:0.8rem; color:var(--text-secondary);">
+                    ${item.eps ? '全 ' + item.eps + ' 集' : '集數未知'}
+                    <br>${item.air_date || '年份未知'}
+                </div>
+            `;
+            resultArea.appendChild(card);
+        });
+
     } catch (error) {
-        console.error("API Error:", error);
-        resultsContainer.innerHTML = '<p style="text-align:center; grid-column:1/-1; color: #ef4444;">搜尋發生錯誤，請稍後再試。</p>';
+        console.error(error);
+        resultArea.innerHTML = '<p style="text-align:center; color:red;">搜尋發生錯誤。</p>';
     }
 }
 
@@ -168,61 +198,56 @@ function renderSearchResults(list) {
     });
 }
 
-// 修改 selectAnimeFromAPI 函式，接收 airDate
-// 修改 selectAnimeFromAPI：加入「是否完結」的智慧判斷
-function selectAnimeFromAPI(title, eps, imgUrl, airDate) {
-    // 1. 基本填寫
+// 2. 選擇函式 (升級版：填入隱藏資料)
+function selectAnimeFromAPI(index) {
+    const item = currentSearchResults[index];
+    if(!item) return;
+
+    const title = item.name_cn || item.name;
+    const eps = item.eps || 0;
+    let imgUrl = item.images ? (item.images.large || item.images.common) : '';
+    if (imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
+    const airDate = item.air_date;
+
+    // A. 填入可見欄位
     document.getElementById('title').value = title;
     if (eps > 0) document.getElementById('total').value = eps;
     document.getElementById('imgUrl').value = imgUrl;
 
-    // 2. 智慧判斷放送日
+    // B. 填入隱藏欄位 (新功能核心)
+    document.getElementById('bangumiId').value = item.id;
+    // 雖然 API search 結果的 tags 可能不完整，先存起來再說，稍後腳本可以補強
+    // 我們把它轉成 JSON 字串存入 hidden input
+    document.getElementById('animeTags').value = JSON.stringify(item.tags || []); 
+    document.getElementById('animeRating').value = JSON.stringify(item.rating || {});
+
+    // C. 智慧判斷放送日 (原本的邏輯)
     const weekdaySelect = document.getElementById('weekday');
-    
     if (airDate) {
         const startDate = new Date(airDate);
-        
         if (!isNaN(startDate.getTime())) {
-            const startDay = startDate.getDay(); // 取得開始日的星期 (0-6)
-            
-            // --- 核心邏輯開始 ---
-            let finalValue = -1; // 預設為「已完結/不固定」
-
+            const startDay = startDate.getDay();
+            let finalValue = -1; 
             if (eps && eps > 0) {
-                // 如果有集數，計算預計結束時間
-                // 公式：開始日 + (集數 * 7天) + 緩衝 56 天 (預防停播/延期)
-                const estimatedDays = (eps * 7) + 56;
+                const estimatedDays = (eps * 7) + 28;
                 const estimatedEndDate = new Date(startDate);
                 estimatedEndDate.setDate(startDate.getDate() + estimatedDays);
-                
                 const today = new Date();
-
-                if (today > estimatedEndDate) {
-                    // 今天已經超過預計結束日 -> 判定為「已完結」
-                    finalValue = -1;
-                    console.log(`判定 [${title}] 已完結 (預計結束於 ${estimatedEndDate.toLocaleDateString()})`);
-                } else {
-                    // 還沒超過 -> 判定為「連載中」 -> 設定為星期幾
-                    finalValue = startDay;
-                }
+                if (today > estimatedEndDate) finalValue = -1;
+                else finalValue = startDay;
             } else {
-                // 如果 eps 為 0 或未知 (通常是長篇連載如海賊王，或尚未定檔)
-                // 假設它還在播，設定為星期幾
                 finalValue = startDay;
             }
-            // --- 核心邏輯結束 ---
-
             weekdaySelect.value = finalValue;
-
         } else {
-            weekdaySelect.value = -1; // 日期格式錯誤
+            weekdaySelect.value = -1;
         }
     } else {
-        weekdaySelect.value = -1; // 沒有日期
+        weekdaySelect.value = -1;
     }
 
     closeModal('searchModal');
-    
+
     // 提示訊息稍微改一下，讓使用者知道系統幫他做了判斷
     const statusText = (weekdaySelect.value == -1) ? "已完結" : "連載中";
     alert(`已自動填寫：${title}\n(系統判定為：${statusText})`);
@@ -241,20 +266,33 @@ async function addAnime(e) {
     const imgUrl = document.getElementById('imgUrl').value.trim();
     // 【新增】讀取放送日
     const weekday = parseInt(document.getElementById('weekday').value);
+    const bangumiId = document.getElementById('bangumiId').value;
+    const tagsStr = document.getElementById('animeTags').value;
+    const ratingStr = document.getElementById('animeRating').value;
 
     if (!title || total <= 0) return alert('請輸入正確資料');
 
     const newAnime = {
-        id: Date.now(),
-        title, total,
-        image: imgUrl || 'https://placehold.co/600x400/1e293b/FFF?text=No+Image',
-        weekday, // 【新增】存入資料庫
-        history: [] 
+        id: Date.now(), // 這是我們系統內部的 ID (保持原本邏輯)
+        bangumiId: bangumiId ? parseInt(bangumiId) : null, // 【新增】Bangumi ID
+        title: title,
+        total: parseInt(total),
+        image: imgUrl,
+        weekday: parseInt(weekday),
+        history: [],
+        
+        // 【新增】擴充資料
+        tags: tagsStr ? JSON.parse(tagsStr) : [],
+        rating: ratingStr ? JSON.parse(ratingStr) : {},
+        addedDate: new Date().toISOString() // 順便紀錄加入時間
     };
 
     const data = await loadData();
     data.push(newAnime);
     await saveData(data);
+    document.getElementById('bangumiId').value = '';
+    document.getElementById('animeTags').value = '';
+    document.getElementById('animeRating').value = '';
 
     alert(`✨ 成功加入：${title}`);
     window.location.href = 'dashboard.html';
@@ -959,11 +997,18 @@ async function quickAddFromExplore(item, weekdayIndex) {
     // 放送日可以直接用目前的 weekdayIndex
     const newAnime = {
         id: Date.now(),
+        bangumiId: item.id, // 【新增】
         title: title,
-        total: 12, // 預設 12 (這是比較安全的猜測，或者設 0)
+        total: item.eps || 0, // 嘗試抓取，如果沒有就設為 0
         image: imgUrl || 'https://placehold.co/600x400/1e293b/FFF?text=No+Image',
-        weekday: weekdayIndex, // 直接帶入目前的星期
-        history: [] 
+        weekday: weekdayIndex,
+        history: [],
+        
+        // 【新增】從 Calendar API 抓取資料
+        // Calendar API 回傳的 rating 格式與 search 略有不同，但通常也有 score
+        tags: [], // Calendar API 通常沒有 tags，之後可以用腳本補抓
+        rating: item.rating || {},
+        addedDate: new Date().toISOString()
     };
 
     // 4. 存檔
