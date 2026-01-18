@@ -433,22 +433,93 @@ async function loadDashboard() {
     });
 }
 
-function openUpdateModal(id, currentWatched, total) {
+// ==========================================
+// 🔥 評分系統核心邏輯
+// ==========================================
+
+let currentAnimeId = null; // 全域變數，用來記住現在正在修改哪部動畫
+
+// 1. 打開更新視窗 (使用你習慣的變數名稱)
+async function openUpdateModal(id, currentWatched, total) {
     currentAnimeId = id;
-    const modal = document.getElementById('updateModal');
-    const weekSelect = document.getElementById('modalWeek');
-    weekSelect.innerHTML = '';
-    getWeekOptions().forEach(opt => {
-        const option = document.createElement('option');
-        option.value = opt.value;
-        option.textContent = opt.label;
-        if(opt.isCurrent) option.selected = true;
-        weekSelect.appendChild(option);
-    });
-    document.getElementById('modalStart').value = currentWatched + 1;
-    document.getElementById('modalEnd').value = currentWatched + 1;
-    document.getElementById('modalTotal').textContent = total;
-    modal.classList.add('active');
+    
+    // 取得該動畫的詳細資料 (為了標題、舊評分、舊心得)
+    const data = await loadData();
+    const anime = data.find(a => a.id === id);
+    
+    if(anime) {
+        // 設定標題
+        const titleEl = document.getElementById('modalTitle');
+        if(titleEl) titleEl.textContent = anime.title;
+
+        // 填入舊的評分與心得 (如果有的話)
+        document.getElementById('userScore').value = anime.userScore || "";
+        document.getElementById('userComment').value = anime.userComment || "";
+    }
+
+    // 設定集數輸入框
+    const epInput = document.getElementById('epInput');
+    epInput.value = currentWatched + 1; // 預設幫使用者 +1
+    
+    // 如果總集數已知，設定最大值
+    if (total > 0) {
+        epInput.max = total;
+    } else {
+        epInput.removeAttribute('max'); // 如果總集數未知，不設上限
+    }
+    
+    // 顯示視窗
+    document.getElementById('updateModal').classList.add('active');
+}
+
+// 2. 執行更新動作 (這是新加入的函式！)
+async function updateProgress(event) {
+    event.preventDefault(); // 防止表單送出後重新整理網頁
+    
+    if (!currentAnimeId) return; // 安全檢查
+
+    // 取得輸入的值
+    const newEp = parseInt(document.getElementById('epInput').value);
+    const newScore = document.getElementById('userScore').value;
+    const newComment = document.getElementById('userComment').value;
+
+    const data = await loadData();
+    const animeIndex = data.findIndex(a => a.id === currentAnimeId);
+
+    if (animeIndex > -1) {
+        const anime = data[animeIndex];
+        const oldWatched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
+        
+        // A. 更新觀看歷史 (Logic: 只有當集數變多時才記錄歷史)
+        if (newEp > oldWatched) {
+            anime.history.push({
+                date: new Date().toISOString(),
+                start: oldWatched + 1,
+                end: newEp,
+                count: newEp - oldWatched
+            });
+        }
+        // 如果使用者把集數改少(修正錯誤)，我們通常不刪除歷史，只更新狀態，這樣比較安全
+
+        // B. 儲存評分與心得 (新功能)
+        anime.userScore = newScore;
+        anime.userComment = newComment;
+
+        // C. 存檔
+        await saveData(data);
+        
+        // D. 關閉視窗並刷新畫面
+        closeModal('updateModal');
+        
+        // 為了讓使用者看到變化，重新載入列表
+        if(typeof loadDashboard === 'function') loadDashboard();
+        if(typeof refreshAll === 'function') refreshAll();
+
+        // E. 完食鼓勵
+        if (anime.total > 0 && newEp >= anime.total) {
+            alert(`🎉 恭喜你看完了《${anime.title}》！`);
+        }
+    }
 }
 
 async function submitUpdate() {
