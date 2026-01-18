@@ -359,26 +359,38 @@ function filterDashboard(type) {
     loadDashboard();
 }
 
-// 1. 產生週次選項的輔助函式 (產生 過去4週 ~ 未來1週)
+// 1. 產生週次選項 (修正為：週一開始 ~ 週日結束)
 function generateWeekOptions() {
     const options = [];
     const today = new Date();
-    // 調整到本週日 (假設週日為一週開始)
-    const day = today.getDay();
-    const diff = today.getDate() - day;
-    const sunday = new Date(today.setDate(diff));
+    
+    // 取得今天是星期幾 (0=週日, 1=週一 ... 6=週六)
+    let day = today.getDay();
+    // 關鍵修正：將週日(0)視為第7天，這樣減法才會回到週一
+    if (day === 0) day = 7; 
+    
+    // 計算本週一的日期
+    // 例如今天週二(2)，就要減去 1 天回到週一
+    const diff = today.getDate() - day + 1; 
+    
+    const monday = new Date(today);
+    monday.setDate(diff); // 設定為本週一
 
-    // 產生前後幾週
+    // 產生前後幾週 (前4週 ~ 未來1週)
     for (let i = -4; i <= 1; i++) {
-        const start = new Date(sunday);
-        start.setDate(sunday.getDate() + (i * 7));
+        // 計算該週的週一
+        const start = new Date(monday);
+        start.setDate(monday.getDate() + (i * 7));
         
+        // 計算該週的週日 (週一 + 6天)
         const end = new Date(start);
         end.setDate(start.getDate() + 6);
 
-        // 格式化日期 MM/DD
-        const fmt = d => `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
-        const val = `${start.getFullYear()}/${fmt(start)} ~ ${fmt(end)}`; // 格式: 2026/01/12 ~ 01/18
+        // 格式化日期 YYYY/MM/DD
+        const fmt = d => `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+        // 顯示格式 (去掉年份讓選單短一點，或者保留視需求而定)
+        // 這裡保留年份以求精確: 2026/01/19 ~ 01/25
+        const val = `${fmt(start)} ~ ${fmt(end).slice(5)}`; // 後面只顯示 MM/DD
         
         // 標記本週
         let label = val;
@@ -478,7 +490,7 @@ async function openUpdateModal(id, currentWatched, total) {
         document.getElementById('userComment').value = anime.userComment || "";
     }
 
-    // A. 生成週次選單
+    // A. 生成週次選單 (使用上方修正後的函式)
     const weekSelect = document.getElementById('modalWeek');
     weekSelect.innerHTML = '';
     const weeks = generateWeekOptions();
@@ -491,13 +503,10 @@ async function openUpdateModal(id, currentWatched, total) {
     });
 
     // B. 設定開始與結束集數
-    // 預設開始集數 = 目前進度 + 1
     const startVal = currentWatched + 1;
     document.getElementById('modalStart').value = startVal;
-    // 預設結束集數 = 開始集數 (假設看一集)，使用者可自己改
     document.getElementById('modalEnd').value = startVal;
 
-    // 設定最大值 (防呆)
     const maxVal = (total > 0) ? total : 9999;
     document.getElementById('modalStart').max = maxVal;
     document.getElementById('modalEnd').max = maxVal;
@@ -582,14 +591,10 @@ async function openHistoryModal(id) {
 
     if (!anime) return;
 
-    // 解決標題 undefined 問題
-    // 這裡我們直接修改 HTML 裡的標題文字，不依賴 class
+    // 設定標題
     const modal = document.getElementById('historyModal');
     let header = modal.querySelector('.modal-header');
-    if (!header) {
-        // 如果 HTML 結構不同，嘗試直接改 modal-content 的第一個子元素
-        header = modal.querySelector('.modal-content > div'); 
-    }
+    if (!header) header = modal.querySelector('.modal-content > div');
     if (header) header.textContent = `歷史紀錄 - ${anime.title}`;
 
     const list = document.getElementById('historyList');
@@ -598,24 +603,43 @@ async function openHistoryModal(id) {
     if (!anime.history || anime.history.length === 0) {
         list.innerHTML = '<div style="text-align:center; color:gray; padding:20px;">尚無觀看紀錄</div>';
     } else {
-        // 【關鍵修復】: 反轉陣列以顯示最新紀錄，但保留 "原始索引 (originalIndex)" 用於刪除
-        // 這樣刪除時才不會刪錯人
         anime.history
-             .map((item, index) => ({ ...item, originalIndex: index })) // 加上原始索引
-             .reverse() // 反轉顯示
+             .map((item, index) => ({ ...item, originalIndex: index }))
+             .reverse()
              .forEach(record => {
             
+            // 處理日期顯示 (相容舊資料)
+            let dateDisplay = record.date;
+            if (!dateDisplay) {
+                dateDisplay = "日期未知";
+            } else if (dateDisplay.includes('T')) {
+                // 如果是舊的 ISO 時間格式 (2025-11-22T...)，轉成簡單日期
+                try {
+                    dateDisplay = new Date(record.date).toLocaleDateString();
+                } catch(e) { dateDisplay = record.date; }
+            }
+
+            // 處理集數顯示 (修正 5-5 問題)
+            let epDisplay = `第 ${record.start} - ${record.end} 集`;
+            if (record.start == record.end) {
+                epDisplay = `第 ${record.start} 集`;
+            }
+
             const item = document.createElement('div');
-            item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid rgba(255,255,255,0.1);";
+            // 【UI 修正】使用 flex，並讓文字區塊 (div:first-child) 佔據主要空間 (flex:1)
+            item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid rgba(255,255,255,0.1); gap: 15px;";
             
             item.innerHTML = `
-                <div>
-                    <div style="font-weight:bold; color:white;">${record.date}</div>
-                    <div style="font-size:0.9rem; color:var(--text-secondary);">
-                        第 ${record.start} - ${record.end} 集 (共 ${record.count} 集)
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight:bold; color:white; margin-bottom: 4px;">${dateDisplay}</div>
+                    <div style="font-size:0.9rem; color:var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${epDisplay} (共 ${record.count} 集)
                     </div>
                 </div>
-                <button onclick="deleteHistory(${record.originalIndex})" style="background:var(--danger-color, #ef4444); color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">刪除</button>
+                <button onclick="deleteHistory(${record.originalIndex})" 
+                    style="background:var(--danger-color, #ef4444); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size: 0.9rem; width: auto; flex-shrink: 0; white-space: nowrap;">
+                    刪除
+                </button>
             `;
             list.appendChild(item);
         });
