@@ -436,9 +436,6 @@ async function loadDashboard() {
 // ==========================================
 // 🔥 評分系統修復區塊 (請小心覆蓋)
 // ==========================================
-
-let currentAnimeId = null; 
-
 async function openUpdateModal(id, currentWatched, total) {
     currentAnimeId = id;
     
