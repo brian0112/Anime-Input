@@ -568,43 +568,75 @@ async function submitUpdate() {
     loadDashboard();
 }
 
+// ==========================================
+// 🛠️ 歷史紀錄修復 (History Fix)
+// ==========================================
+// 1. 打開歷史紀錄視窗 (已修復標題 undefined 問題)
 async function openHistoryModal(id) {
-    currentAnimeId = id;
-    const modal = document.getElementById('historyModal');
-    const list = document.getElementById('historyList');
-    
-    list.innerHTML = '<p>讀取中...</p>';
-    modal.classList.add('active');
-
+    currentAnimeId = id; // 鎖定目前操作的動畫 ID
     const data = await loadData();
     const anime = data.find(a => a.id === id);
+
+    if (!anime) return;
+
+    // 【關鍵修復】直接把標題寫在視窗標題上，而不是列表裡
+    const modal = document.getElementById('historyModal');
+    // 嘗試找 modal-header，如果沒有就找 h3 (視你的 HTML 結構而定)
+    const header = modal.querySelector('.modal-header') || modal.querySelector('h3');
+    if(header) header.textContent = `歷史紀錄 - ${anime.title}`;
+
+    const list = document.getElementById('historyList');
     list.innerHTML = '';
-    
-    const sortedHistory = [...anime.history].sort((a,b) => b.id - a.id);
-    if (sortedHistory.length === 0) {
-        list.innerHTML = '<p style="text-align:center; color:var(--text-secondary)">尚無紀錄</p>';
+
+    if (!anime.history || anime.history.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:gray; padding:20px;">尚無觀看紀錄</div>';
     } else {
-        sortedHistory.forEach(h => {
+        // 反轉顯示 (最新的在最上面)，並保留原始索引以供刪除
+        anime.history.map((record, index) => ({ ...record, originalIndex: index }))
+                     .reverse()
+                     .forEach(record => {
+            
             const item = document.createElement('div');
-            item.className = 'history-item';
-            const epText = (h.start === h.end) ? `第 ${h.start} 集` : `第 ${h.start}-${h.end} 集`;
+            // 使用 flex 排版讓刪除按鈕靠右
+            item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid rgba(255,255,255,0.1);";
+            
+            // 格式化日期
+            const dateStr = new Date(record.date).toLocaleDateString();
+            
             item.innerHTML = `
-                <div><span style="color:var(--accent-color); margin-right:8px;">${h.week}</span> ${epText}</div>
-                <button class="danger btn-sm" onclick="deleteHistory(${h.id})">刪除</button>
+                <div>
+                    <div style="font-weight:bold; color:white;">第 ${record.start} - ${record.end} 集</div>
+                    <div style="font-size:0.8rem; color:var(--text-secondary);">${dateStr} (+${record.count}集)</div>
+                </div>
+                <button onclick="deleteHistory(${record.originalIndex})" style="background:var(--danger-color, #ef4444); color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">刪除</button>
             `;
             list.appendChild(item);
         });
     }
+
+    modal.classList.add('active');
 }
 
-async function deleteHistory(historyId) {
-    if(!confirm('確定刪除？')) return;
+// 2. 刪除單筆紀錄 (已修復「刪除全部」的 Bug)
+async function deleteHistory(index) {
+    if(!confirm("確定要刪除這筆紀錄嗎？")) return;
+
     const data = await loadData();
     const anime = data.find(a => a.id === currentAnimeId);
-    anime.history = anime.history.filter(h => h.id !== historyId);
-    await saveData(data);
-    openHistoryModal(currentAnimeId); 
-    loadDashboard(); 
+
+    if (anime && anime.history) {
+        // 【關鍵修復】splice(index, 1) 只會刪除指定的 1 筆
+        anime.history.splice(index, 1);
+        
+        await saveData(data);
+        
+        // 重新整理列表，讓使用者看到變化
+        openHistoryModal(currentAnimeId);
+        
+        // 順便更新外部列表 (因為進度可能會變)
+        if(typeof loadDashboard === 'function') loadDashboard();
+        if(typeof refreshAll === 'function') refreshAll();
+    }
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
