@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <title>觀看紀錄 - Anime Input</title>
@@ -30,46 +30,61 @@
 
     <div class="container">
         <h1>我的追番清單</h1>
+        
         <div class="search-box" style="margin-bottom: 20px;">
-            <input type="text" id="searchInput" placeholder="🔍 搜尋動畫名稱..." onkeyup="searchAnime()">
+            <input type="text" id="searchInput" placeholder="🔍 搜尋動畫名稱..." onkeyup="loadDashboard()">
         </div>
+        
         <div class="filter-group" style="display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 5px;">
             <button class="filter-btn active" onclick="filterDashboard('all')">全部</button>
             <button class="filter-btn" onclick="filterDashboard('watching')">📺 觀看中</button>
             <button class="filter-btn" onclick="filterDashboard('completed')">✅ 已看完</button>
             <button class="filter-btn" onclick="filterDashboard('planned')">🌱 未觀看</button>
         </div>
+
         <div id="animeGrid" class="grid"></div>
     </div>
 
     <div id="updateModal" class="modal-overlay">
         <div class="modal-content">
-            <div class="modal-header">更新觀看進度</div>
+            <h3 id="modalTitle">更新進度</h3>
             
-            <div class="form-group">
-                <label>選擇觀看週次</label>
-                <select id="modalWeek"></select>
-            </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                <div class="form-group">
-                    <label>開始集數</label>
-                    <input type="number" id="modalStart">
+            <form onsubmit="updateProgress(event)">
+                
+                <div style="margin: 20px 0;">
+                    <label>觀看到第幾集?</label>
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <input type="number" id="epInput" min="0" required style="flex:1; padding:10px; border-radius:5px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05); color:white;">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>結束集數</label>
-                    <input type="number" id="modalEnd">
-                </div>
-            </div>
-            
-            <p style="font-size:0.8rem; color:var(--text-secondary);">
-                總集數: <span id="modalTotal"></span>
-            </p>
 
-            <div class="modal-actions">
-                <button class="outline" onclick="closeModal('updateModal')">取消</button>
-                <button onclick="submitUpdate()">確認更新</button>
-            </div>
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--glass-border);">
+                    <label style="display:block; margin-bottom: 5px; color: var(--accent-color);">個人評價 (選填)</label>
+                    
+                    <div style="display:flex; align-items:center; gap: 10px; margin-bottom: 10px;">
+                        <select id="userScore" style="padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; border-radius: 5px;">
+                            <option value="">尚未評分</option>
+                            <option value="10">10 - 神作</option>
+                            <option value="9">9 - 精彩</option>
+                            <option value="8">8 - 好看</option>
+                            <option value="7">7 - 普通</option>
+                            <option value="6">6 - 及格</option>
+                            <option value="5">5 - 微妙</option>
+                            <option value="4">4 - 難看</option>
+                            <option value="1">1 - 棄番</option>
+                        </select>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">分</span>
+                    </div>
+
+                    <textarea id="userComment" rows="3" placeholder="寫點簡短的心得吧..." 
+                        style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; border-radius: 5px; resize: none;"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="outline" onclick="closeModal('updateModal')">取消</button>
+                    <button type="submit">確認更新</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -83,6 +98,7 @@
             </div>
         </div>
     </div>
+
     <script type="module" src="firebase-init.js"></script>
     <script src="app.js"></script>
 </body>
