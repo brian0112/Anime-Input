@@ -44,25 +44,35 @@
 
         <div id="animeGrid" class="grid"></div>
     </div>
-
+    
     <div id="updateModal" class="modal-overlay">
         <div class="modal-content">
             <h3 id="modalTitle">更新進度</h3>
-            
+        
             <form onsubmit="updateProgress(event)">
-                
-                <div style="margin: 20px 0;">
-                    <label>觀看到第幾集?</label>
-                    <div style="display:flex; gap:10px; margin-top:10px;">
-                        <input type="number" id="epInput" min="0" required style="flex:1; padding:10px; border-radius:5px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05); color:white;">
+            
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>選擇觀看週次</label>
+                    <select id="modalWeek" required style="width:100%; padding:10px; border-radius:5px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05); color:white;">
+                        </select>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>開始集數</label>
+                        <input type="number" id="modalStart" min="1" required style="width:100%; padding:10px; border-radius:5px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05); color:white;">
+                    </div>
+                    <div class="form-group">
+                        <label>結束集數</label>
+                        <input type="number" id="modalEnd" min="1" required style="width:100%; padding:10px; border-radius:5px; border:1px solid var(--glass-border); background:rgba(255,255,255,0.05); color:white;">
                     </div>
                 </div>
 
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--glass-border);">
                     <label style="display:block; margin-bottom: 5px; color: var(--accent-color);">個人評價 (選填)</label>
-                    
+                
                     <div style="display:flex; align-items:center; gap: 10px; margin-bottom: 10px;">
-                        <select id="userScore" style="padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; border-radius: 5px;">
+                        <select id="userScore" style="padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid var(--glass-border); color: white; border-radius: 5px; flex: 1;">
                             <option value="">尚未評分</option>
                             <option value="10">10 - 神作</option>
                             <option value="9">9 - 精彩</option>
@@ -73,10 +83,9 @@
                             <option value="4">4 - 難看</option>
                             <option value="1">1 - 棄番</option>
                         </select>
-                        <span style="font-size: 0.8rem; color: var(--text-secondary);">分</span>
                     </div>
 
-                    <textarea id="userComment" rows="3" placeholder="寫點簡短的心得吧..." 
+                    <textarea id="userComment" rows="2" placeholder="寫點簡短的心得吧..." 
                         style="width: 100%; padding: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white; border-radius: 5px; resize: none;"></textarea>
                 </div>
 
