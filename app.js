@@ -1071,82 +1071,26 @@ async function loadProfile() {
 
     const data = await loadData();
     
-    // ==========================================
-    // 1. 深度數據統計 (Stats Calculation)
-    // ==========================================
+    // 1. 基礎數據統計
     let stats = {
         totalAnimes: data.length,
         totalEps: 0,
-        completedCount: 0,
-        // 標籤計數器
-        tags: { isekai: 0, love: 0, scifi: 0, healing: 0, dark: 0 },
-        // 評分計數器 (只計算已看完的，或是進度>0的)
-        rating: { god: 0, trash: 0 },
-        // 年份計數器
-        year: { retro: 0 }
-    };
-
-    // 關鍵字定義 (Bangumi 的標籤通常是簡中或日文漢字)
-    const keywords = {
-        isekai: ['异世界', '異世界', '穿越', '转生', '轉生'],
-        love: ['恋爱', '戀愛', '爱情', '愛情', '纯爱', '純愛', '后宫', '後宮'],
-        scifi: ['科幻', '机战', '機戰', '机器人', '機器人', '赛博朋克'],
-        healing: ['治愈', '治癒', '日常', '温馨'],
-        dark: ['致郁', '致鬱', '黑暗', '绝望']
+        completedCount: 0
     };
 
     data.forEach(anime => {
-        // --- 基礎數據 ---
         const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
         stats.totalEps += watched;
         
         // 判斷完食
-        const isCompleted = (anime.total > 0 && watched >= anime.total);
-        if (isCompleted) stats.completedCount++;
-
-        // --- API 屬性數據 (標籤) ---
-        // 確保 tags 存在且是陣列
-        if (anime.tags && Array.isArray(anime.tags)) {
-            // 檢查這部動畫是否包含特定關鍵字
-            const animeTagNames = anime.tags.map(t => t.name); // 取得標籤名稱陣列
-            
-            if (animeTagNames.some(t => keywords.isekai.some(k => t.includes(k)))) stats.tags.isekai++;
-            if (animeTagNames.some(t => keywords.love.some(k => t.includes(k)))) stats.tags.love++;
-            if (animeTagNames.some(t => keywords.scifi.some(k => t.includes(k)))) stats.tags.scifi++;
-            if (animeTagNames.some(t => keywords.healing.some(k => t.includes(k)))) stats.tags.healing++;
-            if (animeTagNames.some(t => keywords.dark.some(k => t.includes(k)))) stats.tags.dark++;
-        }
-
-        // --- API 屬性數據 (評分與年份) ---
-        // 只有「有看過(watched > 0)」的才列入統計，避免加了一堆神作但沒看也算成就
-        if (watched > 0) {
-            // 評分判斷
-            if (anime.rating && anime.rating.score) {
-                if (anime.rating.score >= 8.5) stats.rating.god++;
-                if (anime.rating.score <= 5.0) stats.rating.trash++;
-            }
-            
-            // 年份判斷 (檢查 air_date)
-            // Bangumi 格式通常是 '2004-01-01'
-            if (anime.rating && anime.rating.score) { // 借用 rating 物件檢查，或者直接查 air_date 欄位(如果之前有存)
-                 // 如果你之前沒有在 addAnime 存 air_date，這裡可能無法判斷，除非用 tags 裡的年份
-                 // 這裡我們暫時用 tags 裡的年份標籤 (如 "2004") 或是假設新版 addAnime 有存
-            }
-            // 簡單起見，我們用 tags 裡的年份標籤來判斷文藝復興
-            if (anime.tags && Array.isArray(anime.tags)) {
-                 const yearTags = anime.tags.filter(t => t.name.match(/^\d{4}$/)); // 找 4 個數字的標籤
-                 yearTags.forEach(t => {
-                     if (parseInt(t.name) <= 2005) stats.year.retro++;
-                 });
-            }
+        if (anime.total > 0 && watched >= anime.total) {
+            stats.completedCount++;
         }
     });
 
     const totalHours = Math.round((stats.totalEps * 24) / 60);
 
-    // ==========================================
-    // 2. 更新 DOM 基礎數據
-    // ==========================================
+    // 2. 更新 DOM 數據
     document.getElementById('stat-count').textContent = stats.totalAnimes;
     document.getElementById('stat-ep').textContent = stats.totalEps;
     document.getElementById('stat-time').textContent = totalHours + 'h';
@@ -1156,7 +1100,7 @@ async function loadProfile() {
         document.getElementById('profile-avatar').src = window.currentUser.photoURL;
     }
 
-    // 計算稱號
+    // 計算稱號 (Level)
     const titleEl = document.getElementById('profile-title');
     if (stats.totalEps < 50) titleEl.textContent = "LV.1 萌新觀眾";
     else if (stats.totalEps < 200) titleEl.textContent = "LV.10 資深宅宅";
@@ -1165,9 +1109,7 @@ async function loadProfile() {
     else if (stats.totalEps < 5000) titleEl.textContent = "LV.80 次元領主";
     else titleEl.textContent = "LV.99 傳說中的御宅族";
 
-    // ==========================================
-    // 3. 成就判斷與篩選 (Logic: Highest Tier Only)
-    // ==========================================
+    // 3. 成就判斷與篩選 (只顯示最高階)
     const badgeContainer = document.getElementById('badge-container');
     const listContainer = document.getElementById('achievements-list');
     
@@ -1175,11 +1117,7 @@ async function loadProfile() {
     listContainer.innerHTML = '';
 
     const achievements = window.ACHIEVEMENT_DB || [];
-    
-    // 用來暫存各個群組中「最高級」的成就
-    // 格式: { 'collection': AchievementObj, 'episodes': AchievementObj, ... }
-    let bestBadges = {}; 
-    let otherBadges = []; // 沒有群組的獨立成就 (如屬性成就)
+    let bestBadges = {}; // 暫存各群組最高級成就
 
     achievements.forEach(ach => {
         let isUnlocked = false;
@@ -1188,29 +1126,19 @@ async function loadProfile() {
         if (ach.type === 'collection') isUnlocked = stats.totalAnimes >= ach.threshold;
         else if (ach.type === 'episodes') isUnlocked = stats.totalEps >= ach.threshold;
         else if (ach.type === 'completed') isUnlocked = stats.completedCount >= ach.threshold;
-        else if (ach.check) isUnlocked = ach.check(stats); // 檢查 API 屬性成就
 
-        // 處理顯示邏輯
         if (isUnlocked) {
+            // 比較並保留同群組中「門檻最高」的那個
             if (ach.group) {
-                // 如果是階梯式成就，比較並保留同群組中「門檻最高」的那個
                 if (!bestBadges[ach.group] || ach.threshold > bestBadges[ach.group].threshold) {
                     bestBadges[ach.group] = ach;
                 }
-            } else {
-                // 獨立成就直接加入
-                otherBadges.push(ach);
             }
         }
 
-        // 下方列表：顯示所有成就 (包含未解鎖，讓人知道進度)
-        // 這裡我們稍微優化：如果該群組已有更高級的解鎖，低級的就不顯示在列表中，避免列表太長？
-        // 或者保留你的原意：列表顯示全部，只有「名片上的徽章」顯示最高級。
-        // 這裡我們維持「列表顯示全部狀態」，但名片只貼最高級。
-        
+        // 下方列表顯示所有成就狀態
         const item = document.createElement('div');
         item.className = `achievement-item ${isUnlocked ? '' : 'locked'}`;
-        // 如果是已解鎖的階梯成就，但不是最高級，可以給它一個半透明效果區分，或是維持原樣
         item.innerHTML = `
             <div class="achievement-icon">${ach.icon}</div>
             <div>
@@ -1223,18 +1151,12 @@ async function loadProfile() {
         listContainer.appendChild(item);
     });
 
-    // ==========================================
-    // 4. 渲染名片徽章 (Badges Rendering)
-    // ==========================================
-    
-    // A. 先加入最高階級的基礎徽章
+    // 4. 渲染名片徽章 (只渲染最高級)
     Object.values(bestBadges).forEach(ach => {
-        createBadgeElement(ach, badgeContainer);
-    });
-
-    // B. 再加入屬性徽章
-    otherBadges.forEach(ach => {
-        createBadgeElement(ach, badgeContainer);
+        const badge = document.createElement('div');
+        badge.className = 'badge';
+        badge.innerHTML = `${ach.icon} ${ach.title}`;
+        badgeContainer.appendChild(badge);
     });
 
     if (badgeContainer.innerHTML === '') {
