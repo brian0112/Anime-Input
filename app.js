@@ -434,44 +434,74 @@ async function loadDashboard() {
 }
 
 // ==========================================
-// 🔥 評分系統核心邏輯
+// 🔥 評分系統修復區塊 (請小心覆蓋)
 // ==========================================
 
-let currentAnimeId = null; // 全域變數，用來記住現在正在修改哪部動畫
+let currentAnimeId = null; 
 
-// 1. 打開更新視窗 (使用你習慣的變數名稱)
 async function openUpdateModal(id, currentWatched, total) {
     currentAnimeId = id;
     
-    // 取得該動畫的詳細資料 (為了標題、舊評分、舊心得)
     const data = await loadData();
     const anime = data.find(a => a.id === id);
     
     if(anime) {
-        // 設定標題
         const titleEl = document.getElementById('modalTitle');
         if(titleEl) titleEl.textContent = anime.title;
-
-        // 填入舊的評分與心得 (如果有的話)
         document.getElementById('userScore').value = anime.userScore || "";
         document.getElementById('userComment').value = anime.userComment || "";
     }
 
-    // 設定集數輸入框
     const epInput = document.getElementById('epInput');
-    epInput.value = currentWatched + 1; // 預設幫使用者 +1
+    epInput.value = currentWatched + 1;
     
-    // 如果總集數已知，設定最大值
     if (total > 0) {
         epInput.max = total;
     } else {
-        epInput.removeAttribute('max'); // 如果總集數未知，不設上限
+        epInput.removeAttribute('max');
     }
     
-    // 顯示視窗
     document.getElementById('updateModal').classList.add('active');
 }
 
+async function updateProgress(event) {
+    event.preventDefault();
+    if (!currentAnimeId) return; 
+
+    const newEp = parseInt(document.getElementById('epInput').value);
+    const newScore = document.getElementById('userScore').value;
+    const newComment = document.getElementById('userComment').value;
+
+    const data = await loadData();
+    const animeIndex = data.findIndex(a => a.id === currentAnimeId);
+
+    if (animeIndex > -1) {
+        const anime = data[animeIndex];
+        const oldWatched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
+        
+        if (newEp > oldWatched) {
+            anime.history.push({
+                date: new Date().toISOString(),
+                start: oldWatched + 1,
+                end: newEp,
+                count: newEp - oldWatched
+            });
+        }
+
+        anime.userScore = newScore;
+        anime.userComment = newComment;
+
+        await saveData(data);
+        closeModal('updateModal');
+        
+        if(typeof loadDashboard === 'function') loadDashboard();
+        if(typeof refreshAll === 'function') refreshAll();
+
+        if (anime.total > 0 && newEp >= anime.total) {
+            alert(`🎉 恭喜你看完了《${anime.title}》！`);
+        }
+    }
+}
 // 2. 執行更新動作 (這是新加入的函式！)
 async function updateProgress(event) {
     event.preventDefault(); // 防止表單送出後重新整理網頁
