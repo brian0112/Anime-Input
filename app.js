@@ -340,7 +340,6 @@ async function addAnime(e) {
 
 // 2. 紀錄頁面 (Dashboard)
 let currentAnimeId = null;
-
 let currentFilter = 'all'; // 預設顯示全部
 
 // 1. 切換篩選器
@@ -358,6 +357,37 @@ function filterDashboard(type) {
 
     // 重新載入列表
     loadDashboard();
+}
+
+// 1. 產生週次選項的輔助函式 (產生 過去4週 ~ 未來1週)
+function generateWeekOptions() {
+    const options = [];
+    const today = new Date();
+    // 調整到本週日 (假設週日為一週開始)
+    const day = today.getDay();
+    const diff = today.getDate() - day;
+    const sunday = new Date(today.setDate(diff));
+
+    // 產生前後幾週
+    for (let i = -4; i <= 1; i++) {
+        const start = new Date(sunday);
+        start.setDate(sunday.getDate() + (i * 7));
+        
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+
+        // 格式化日期 MM/DD
+        const fmt = d => `${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+        const val = `${start.getFullYear()}/${fmt(start)} ~ ${fmt(end)}`; // 格式: 2026/01/12 ~ 01/18
+        
+        // 標記本週
+        let label = val;
+        if (i === 0) label += " (本週)";
+
+        options.push({ value: val, label: label, selected: i === 0 });
+    }
+    // 反轉陣列，讓最新的在最上面
+    return options.reverse();
 }
 
 async function loadDashboard() {
@@ -443,20 +473,34 @@ async function openUpdateModal(id, currentWatched, total) {
     const anime = data.find(a => a.id === id);
     
     if(anime) {
-        const titleEl = document.getElementById('modalTitle');
-        if(titleEl) titleEl.textContent = anime.title;
+        document.getElementById('modalTitle').textContent = `更新進度 - ${anime.title}`;
         document.getElementById('userScore').value = anime.userScore || "";
         document.getElementById('userComment').value = anime.userComment || "";
     }
 
-    const epInput = document.getElementById('epInput');
-    epInput.value = currentWatched + 1;
-    
-    if (total > 0) {
-        epInput.max = total;
-    } else {
-        epInput.removeAttribute('max');
-    }
+    // A. 生成週次選單
+    const weekSelect = document.getElementById('modalWeek');
+    weekSelect.innerHTML = '';
+    const weeks = generateWeekOptions();
+    weeks.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w.value;
+        opt.textContent = w.label;
+        if(w.selected) opt.selected = true;
+        weekSelect.appendChild(opt);
+    });
+
+    // B. 設定開始與結束集數
+    // 預設開始集數 = 目前進度 + 1
+    const startVal = currentWatched + 1;
+    document.getElementById('modalStart').value = startVal;
+    // 預設結束集數 = 開始集數 (假設看一集)，使用者可自己改
+    document.getElementById('modalEnd').value = startVal;
+
+    // 設定最大值 (防呆)
+    const maxVal = (total > 0) ? total : 9999;
+    document.getElementById('modalStart').max = maxVal;
+    document.getElementById('modalEnd').max = maxVal;
     
     document.getElementById('updateModal').classList.add('active');
 }
@@ -465,86 +509,46 @@ async function updateProgress(event) {
     event.preventDefault();
     if (!currentAnimeId) return; 
 
-    const newEp = parseInt(document.getElementById('epInput').value);
+    // 取得資料
+    const weekVal = document.getElementById('modalWeek').value;
+    const startEp = parseInt(document.getElementById('modalStart').value);
+    const endEp = parseInt(document.getElementById('modalEnd').value);
     const newScore = document.getElementById('userScore').value;
     const newComment = document.getElementById('userComment').value;
 
-    const data = await loadData();
-    const animeIndex = data.findIndex(a => a.id === currentAnimeId);
-
-    if (animeIndex > -1) {
-        const anime = data[animeIndex];
-        const oldWatched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
-        
-        if (newEp > oldWatched) {
-            anime.history.push({
-                date: new Date().toISOString(),
-                start: oldWatched + 1,
-                end: newEp,
-                count: newEp - oldWatched
-            });
-        }
-
-        anime.userScore = newScore;
-        anime.userComment = newComment;
-
-        await saveData(data);
-        closeModal('updateModal');
-        
-        if(typeof loadDashboard === 'function') loadDashboard();
-        if(typeof refreshAll === 'function') refreshAll();
-
-        if (anime.total > 0 && newEp >= anime.total) {
-            alert(`🎉 恭喜你看完了《${anime.title}》！`);
-        }
+    if (endEp < startEp) {
+        alert("結束集數不能小於開始集數！");
+        return;
     }
-}
-// 2. 執行更新動作 (這是新加入的函式！)
-async function updateProgress(event) {
-    event.preventDefault(); // 防止表單送出後重新整理網頁
-    
-    if (!currentAnimeId) return; // 安全檢查
-
-    // 取得輸入的值
-    const newEp = parseInt(document.getElementById('epInput').value);
-    const newScore = document.getElementById('userScore').value;
-    const newComment = document.getElementById('userComment').value;
 
     const data = await loadData();
     const animeIndex = data.findIndex(a => a.id === currentAnimeId);
 
     if (animeIndex > -1) {
         const anime = data[animeIndex];
-        const oldWatched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
         
-        // A. 更新觀看歷史 (Logic: 只有當集數變多時才記錄歷史)
-        if (newEp > oldWatched) {
-            anime.history.push({
-                date: new Date().toISOString(),
-                start: oldWatched + 1,
-                end: newEp,
-                count: newEp - oldWatched
-            });
-        }
-        // 如果使用者把集數改少(修正錯誤)，我們通常不刪除歷史，只更新狀態，這樣比較安全
+        // A. 新增歷史紀錄 (這裡紀錄的是您選擇的「現實週次」)
+        const count = endEp - startEp + 1;
+        anime.history.push({
+            date: weekVal,  // 使用選擇的週次字串，例如 "2026/01/12 ~ 01/18"
+            start: startEp,
+            end: endEp,
+            count: count
+        });
 
-        // B. 儲存評分與心得 (新功能)
+        // B. 儲存評分與心得
         anime.userScore = newScore;
         anime.userComment = newComment;
 
-        // C. 存檔
         await saveData(data);
-        
-        // D. 關閉視窗並刷新畫面
         closeModal('updateModal');
         
-        // 為了讓使用者看到變化，重新載入列表
         if(typeof loadDashboard === 'function') loadDashboard();
         if(typeof refreshAll === 'function') refreshAll();
 
-        // E. 完食鼓勵
-        if (anime.total > 0 && newEp >= anime.total) {
-            alert(`🎉 恭喜你看完了《${anime.title}》！`);
+        // 完食鼓勵
+        if (anime.total > 0 && endEp >= anime.total) {
+            alert(`🎉 恭喜完食！`);
         }
     }
 }
@@ -571,19 +575,22 @@ async function submitUpdate() {
 // ==========================================
 // 🛠️ 歷史紀錄修復 (History Fix)
 // ==========================================
-// 1. 打開歷史紀錄視窗 (已修復標題 undefined 問題)
 async function openHistoryModal(id) {
-    currentAnimeId = id; // 鎖定目前操作的動畫 ID
+    currentAnimeId = id; 
     const data = await loadData();
     const anime = data.find(a => a.id === id);
 
     if (!anime) return;
 
-    // 【關鍵修復】直接把標題寫在視窗標題上，而不是列表裡
+    // 解決標題 undefined 問題
+    // 這裡我們直接修改 HTML 裡的標題文字，不依賴 class
     const modal = document.getElementById('historyModal');
-    // 嘗試找 modal-header，如果沒有就找 h3 (視你的 HTML 結構而定)
-    const header = modal.querySelector('.modal-header') || modal.querySelector('h3');
-    if(header) header.textContent = `歷史紀錄 - ${anime.title}`;
+    let header = modal.querySelector('.modal-header');
+    if (!header) {
+        // 如果 HTML 結構不同，嘗試直接改 modal-content 的第一個子元素
+        header = modal.querySelector('.modal-content > div'); 
+    }
+    if (header) header.textContent = `歷史紀錄 - ${anime.title}`;
 
     const list = document.getElementById('historyList');
     list.innerHTML = '';
@@ -591,22 +598,22 @@ async function openHistoryModal(id) {
     if (!anime.history || anime.history.length === 0) {
         list.innerHTML = '<div style="text-align:center; color:gray; padding:20px;">尚無觀看紀錄</div>';
     } else {
-        // 反轉顯示 (最新的在最上面)，並保留原始索引以供刪除
-        anime.history.map((record, index) => ({ ...record, originalIndex: index }))
-                     .reverse()
-                     .forEach(record => {
+        // 【關鍵修復】: 反轉陣列以顯示最新紀錄，但保留 "原始索引 (originalIndex)" 用於刪除
+        // 這樣刪除時才不會刪錯人
+        anime.history
+             .map((item, index) => ({ ...item, originalIndex: index })) // 加上原始索引
+             .reverse() // 反轉顯示
+             .forEach(record => {
             
             const item = document.createElement('div');
-            // 使用 flex 排版讓刪除按鈕靠右
             item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:12px; border-bottom:1px solid rgba(255,255,255,0.1);";
-            
-            // 格式化日期
-            const dateStr = new Date(record.date).toLocaleDateString();
             
             item.innerHTML = `
                 <div>
-                    <div style="font-weight:bold; color:white;">第 ${record.start} - ${record.end} 集</div>
-                    <div style="font-size:0.8rem; color:var(--text-secondary);">${dateStr} (+${record.count}集)</div>
+                    <div style="font-weight:bold; color:white;">${record.date}</div>
+                    <div style="font-size:0.9rem; color:var(--text-secondary);">
+                        第 ${record.start} - ${record.end} 集 (共 ${record.count} 集)
+                    </div>
                 </div>
                 <button onclick="deleteHistory(${record.originalIndex})" style="background:var(--danger-color, #ef4444); color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">刪除</button>
             `;
@@ -625,15 +632,13 @@ async function deleteHistory(index) {
     const anime = data.find(a => a.id === currentAnimeId);
 
     if (anime && anime.history) {
-        // 【關鍵修復】splice(index, 1) 只會刪除指定的 1 筆
+        // 因為傳入的是 originalIndex，所以這裡 splice 絕對準確
         anime.history.splice(index, 1);
         
         await saveData(data);
         
-        // 重新整理列表，讓使用者看到變化
+        // 刷新列表
         openHistoryModal(currentAnimeId);
-        
-        // 順便更新外部列表 (因為進度可能會變)
         if(typeof loadDashboard === 'function') loadDashboard();
         if(typeof refreshAll === 'function') refreshAll();
     }
