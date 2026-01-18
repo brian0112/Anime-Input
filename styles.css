@@ -209,16 +209,19 @@ button.outline:hover {
   visibility: visible;
 }
 
+/* 修改 styles.css 中的 .modal-content */
 .modal-content {
-  background: #1e293b;
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 30px;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-  transform: translateY(20px);
-  transition: all 0.3s ease;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    padding: 2rem;
+    border-radius: 16px;
+    width: 90%; 
+    max-width: 600px; /* 從原本的 400px 改為 600px，讓空間更寬裕 */
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    animation: modalSlideIn 0.3s ease;
 }
 
 .modal-overlay.active .modal-content {
