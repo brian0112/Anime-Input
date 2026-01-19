@@ -742,8 +742,8 @@ async function loadManage() {
         item.innerHTML = `
             <div style="font-weight:500; flex:1; margin-right: 15px;">${anime.title}</div>
             <div style="display:flex; gap:10px; flex-shrink: 0;">
-                <button class="btn-sm" style="background:var(--accent-color); color:var(--bg-color);" onclick="openEditModal(${anime.id})">編輯</button>
-                <button class="danger btn-sm" onclick="deleteAnime(${anime.id})">刪除</button>
+                <button class="btn-sm" style="background:var(--accent-color); color:var(--bg-color);" onclick="openEditModal('${anime.id}')">編輯</button>
+                <button class="danger btn-sm" onclick="deleteAnime('${anime.id}')">刪除</button>
             </div>
         `;
         list.appendChild(item);
