@@ -1205,41 +1205,85 @@ function showResult(element) {
     }, 50);
 }
 
-// ------------------------------------------
-// 4. 額外功能：將探索結果加入片單
-// ------------------------------------------
+// 修改 app.js 中的 addFromRoulette 函式
+
 async function addFromRoulette() {
     if (!currentExternalWinner) return;
     
     const choice = confirm(`確定要將《${currentExternalWinner.title}》加入你的片單嗎？`);
     if (!choice) return;
 
-    const data = await loadData();
-    const bgmData = currentExternalWinner.originalData;
+    // 顯示載入中狀態
+    const btn = document.querySelector('#result-external button:last-child');
+    const originalText = btn.textContent;
+    btn.textContent = "資料獲取中...";
+    btn.disabled = true;
 
-    // 檢查是否已存在
-    const exists = data.some(a => a.bangumiId == bgmData.id || a.title == currentExternalWinner.title);
-    if (exists) {
-        return alert("這部動畫已經在你的清單裡囉！");
+    try {
+        const bgmData = currentExternalWinner.originalData;
+        const targetId = bgmData.id;
+
+        // 🚀 關鍵修改：先去抓詳細資料 (獲取正確集數與標籤)
+        console.log(`正在獲取《${currentExternalWinner.title}》的詳細資料...`);
+        const headers = {
+            'User-Agent': 'BrianAnimeInput/WebClient (https://github.com/brian0112/Anime-Input)',
+            'Accept': 'application/json'
+        };
+        
+        const detailUrl = `https://api.bgm.tv/subject/${targetId}?responseGroup=large`;
+        const res = await fetch(detailUrl, { headers });
+        const detailJson = await res.json();
+
+        // 準備資料
+        const data = await loadData();
+
+        // 檢查重複
+        const exists = data.some(a => a.bangumiId == targetId || a.title == currentExternalWinner.title);
+        if (exists) {
+            alert("這部動畫已經在你的清單裡囉！");
+            return;
+        }
+
+        // 確保集數正確 (優先用詳細資料的 eps，沒有的話再試試其他的，最後預設 12 避免除以零)
+        // 轉型成數字確保安全
+        let finalEps = parseInt(detailJson.eps, 10) || parseInt(bgmData.eps, 10) || 0;
+        
+        // 如果還是 0，嘗試判斷是否為未上映或資料缺失，給個提示讓使用者手動改，但暫時設為 12 或 ?
+        // 為了避免 NaN 錯誤，如果抓不到集數，我們先預設 12 (一季)，並標記需要檢查
+        if (finalEps === 0) {
+            console.warn("無法抓取集數，預設為 12");
+            finalEps = 12; 
+        }
+
+        const newAnime = {
+            id: Date.now().toString(),
+            title: detailJson.name_cn || detailJson.name || currentExternalWinner.title,
+            bangumiId: targetId,
+            total: finalEps,
+            // 圖片
+            image: (detailJson.images && (detailJson.images.large || detailJson.images.common)) ? 
+                   (detailJson.images.large || detailJson.images.common).replace('http://', 'https://') : 
+                   (currentExternalWinner.image || ''),
+            history: [],
+            // 標籤 (現在可以抓到了！)
+            tags: detailJson.tags || [], 
+            rating: detailJson.rating || {},
+            created: new Date().toISOString()
+        };
+
+        data.push(newAnime);
+        await saveData(data);
+        
+        alert(`🎉 成功加入！\n📖 作品：${newAnime.title}\n📺 集數：${newAnime.total}\n🏷️ 標籤：${newAnime.tags.length} 個`);
+        
+    } catch (error) {
+        console.error("加入失敗:", error);
+        alert("加入失敗，請檢查網路連線。");
+    } finally {
+        // 恢復按鈕
+        btn.textContent = originalText;
+        btn.disabled = false;
     }
-
-    // 建立新物件
-    const newAnime = {
-        id: Date.now().toString(),
-        title: currentExternalWinner.title,
-        bangumiId: bgmData.id,
-        // 嘗試抓取集數，如果 API 沒給就預設 0
-        total: bgmData.eps || 0,
-        image: currentExternalWinner.image ? currentExternalWinner.image.replace('http://', 'https://') : '',
-        history: [],
-        tags: [], // 暫時為空，之後可以靠補抓腳本
-        rating: bgmData.rating || {},
-        created: new Date().toISOString()
-    };
-
-    data.push(newAnime);
-    await saveData(data);
-    alert("🎉 成功加入片單！可以去「紀錄」頁面查看了。");
 }
 
 // ==========================================
