@@ -581,9 +581,7 @@ async function submitUpdate() {
     loadDashboard();
 }
 
-// ==========================================
-// 🛠️ 歷史紀錄修復 (History Fix)
-// ==========================================
+// 3. 歷史紀錄修復 (強制修復按鈕卷軸、優化排版)
 async function openHistoryModal(id) {
     currentAnimeId = id; 
     const data = await loadData();
@@ -608,27 +606,45 @@ async function openHistoryModal(id) {
              .reverse()
              .forEach(record => {
             
-            // 處理日期顯示 (相容舊資料)
+            // 處理日期顯示
             let dateDisplay = record.date;
             if (!dateDisplay) {
                 dateDisplay = "日期未知";
             } else if (dateDisplay.includes('T')) {
-                // 如果是舊的 ISO 時間格式 (2025-11-22T...)，轉成簡單日期
                 try {
                     dateDisplay = new Date(record.date).toLocaleDateString();
                 } catch(e) { dateDisplay = record.date; }
             }
 
-            // 處理集數顯示 (修正 5-5 問題)
+            // 處理集數顯示
             let epDisplay = `第 ${record.start} - ${record.end} 集`;
             if (record.start == record.end) {
                 epDisplay = `第 ${record.start} 集`;
             }
 
             const item = document.createElement('div');
-            // 【UI 修正】使用 flex，並讓文字區塊 (div:first-child) 佔據主要空間 (flex:1)
+            // item 樣式：確保 flex 排版，gap 稍微拉大
             item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid rgba(255,255,255,0.1); gap: 15px;";
             
+            // 按鈕樣式：加入 overflow: hidden 和 display: inline-flex 以完美置中並隱藏卷軸
+            const btnStyle = `
+                background: var(--danger-color, #ef4444);
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                width: auto;
+                min-width: 60px; /* 給予最小寬度 */
+                flex-shrink: 0;
+                white-space: nowrap;
+                overflow: hidden; /* 【關鍵修正】強制隱藏卷軸 */
+                display: inline-flex; /* 確保內容置中 */
+                justify-content: center;
+                align-items: center;
+            `;
+
             item.innerHTML = `
                 <div style="flex: 1; min-width: 0;">
                     <div style="font-weight:bold; color:white; margin-bottom: 4px;">${dateDisplay}</div>
@@ -636,8 +652,7 @@ async function openHistoryModal(id) {
                         ${epDisplay} (共 ${record.count} 集)
                     </div>
                 </div>
-                <button onclick="deleteHistory(${record.originalIndex})" 
-                    style="background:var(--danger-color, #ef4444); color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-size: 0.9rem; width: auto; flex-shrink: 0; white-space: nowrap;">
+                <button onclick="deleteHistory(${record.originalIndex})" style="${btnStyle}">
                     刪除
                 </button>
             `;
