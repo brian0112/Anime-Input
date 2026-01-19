@@ -1205,7 +1205,7 @@ function showResult(element) {
     }, 50);
 }
 
-// 修改 app.js 中的 addFromRoulette 函式
+// 修改 app.js 中的 addFromRoulette 函式 (V2: 含完整欄位與狀態判斷)
 
 async function addFromRoulette() {
     if (!currentExternalWinner) return;
@@ -1213,7 +1213,7 @@ async function addFromRoulette() {
     const choice = confirm(`確定要將《${currentExternalWinner.title}》加入你的片單嗎？`);
     if (!choice) return;
 
-    // 顯示載入中狀態
+    // UILoading
     const btn = document.querySelector('#result-external button:last-child');
     const originalText = btn.textContent;
     btn.textContent = "資料獲取中...";
@@ -1223,7 +1223,7 @@ async function addFromRoulette() {
         const bgmData = currentExternalWinner.originalData;
         const targetId = bgmData.id;
 
-        // 🚀 關鍵修改：先去抓詳細資料 (獲取正確集數與標籤)
+        // 1. 抓取詳細資料
         console.log(`正在獲取《${currentExternalWinner.title}》的詳細資料...`);
         const headers = {
             'User-Agent': 'BrianAnimeInput/WebClient (https://github.com/brian0112/Anime-Input)',
@@ -1234,7 +1234,7 @@ async function addFromRoulette() {
         const res = await fetch(detailUrl, { headers });
         const detailJson = await res.json();
 
-        // 準備資料
+        // 2. 準備資料
         const data = await loadData();
 
         // 檢查重複
@@ -1244,48 +1244,68 @@ async function addFromRoulette() {
             return;
         }
 
-        // 確保集數正確 (優先用詳細資料的 eps，沒有的話再試試其他的，最後預設 12 避免除以零)
-        // 轉型成數字確保安全
+        // 3. 處理集數
         let finalEps = parseInt(detailJson.eps, 10) || parseInt(bgmData.eps, 10) || 0;
+        if (finalEps === 0) finalEps = 12; // 預設值
+
+        // 4. 【新增】處理放送狀態 (Week)
+        let finalStatus = -1; // 預設: 已完結
+        const airDate = detailJson.air_date;
         
-        // 如果還是 0，嘗試判斷是否為未上映或資料缺失，給個提示讓使用者手動改，但暫時設為 12 或 ?
-        // 為了避免 NaN 錯誤，如果抓不到集數，我們先預設 12 (一季)，並標記需要檢查
-        if (finalEps === 0) {
-            console.warn("無法抓取集數，預設為 12");
-            finalEps = 12; 
+        if (airDate && airDate !== '0000-00-00') {
+            const startDate = new Date(airDate);
+            if (!isNaN(startDate.getTime())) {
+                const startDay = startDate.getDay();
+                const today = new Date();
+                
+                // 判斷邏輯 (同新增頁面)
+                if (finalEps > 0) {
+                    const estimatedDays = (finalEps * 7) + 28;
+                    const estimatedEndDate = new Date(startDate);
+                    estimatedEndDate.setDate(startDate.getDate() + estimatedDays);
+                    if (today <= estimatedEndDate) finalStatus = startDay;
+                } else {
+                    const diffTime = today - startDate;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    if (diffDays < 180) finalStatus = startDay;
+                }
+            }
         }
 
+        // 5. 建立完整物件
         const newAnime = {
             id: Date.now().toString(),
             title: detailJson.name_cn || detailJson.name || currentExternalWinner.title,
             bangumiId: targetId,
             total: finalEps,
-            // 圖片
             image: (detailJson.images && (detailJson.images.large || detailJson.images.common)) ? 
                    (detailJson.images.large || detailJson.images.common).replace('http://', 'https://') : 
                    (currentExternalWinner.image || ''),
             history: [],
-            // 標籤 (現在可以抓到了！)
             tags: detailJson.tags || [], 
             rating: detailJson.rating || {},
-            created: new Date().toISOString()
+            created: new Date().toISOString(),
+            
+            // 補上缺失的欄位，確保管理頁面不報錯
+            week: finalStatus, 
+            userScore: "",
+            userComment: ""
         };
 
         data.push(newAnime);
         await saveData(data);
         
-        alert(`🎉 成功加入！\n📖 作品：${newAnime.title}\n📺 集數：${newAnime.total}\n🏷️ 標籤：${newAnime.tags.length} 個`);
+        const statusText = (finalStatus == -1) ? "已完結" : "連載中";
+        alert(`🎉 成功加入！\n📖 作品：${newAnime.title}\n📺 集數：${newAnime.total}\n📡 狀態：${statusText}`);
         
     } catch (error) {
         console.error("加入失敗:", error);
         alert("加入失敗，請檢查網路連線。");
     } finally {
-        // 恢復按鈕
         btn.textContent = originalText;
         btn.disabled = false;
     }
 }
-
 // ==========================================
 // 🔥 V12.0 新增：探索頁面邏輯 🔥
 // ==========================================
