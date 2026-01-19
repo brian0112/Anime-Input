@@ -420,6 +420,8 @@ function generateWeekOptions() {
     return options.reverse();
 }
 
+// 修改 app.js 中的 loadDashboard 函式
+
 async function loadDashboard() {
     const list = document.getElementById('animeGrid');
     if (!list) return;
@@ -428,26 +430,23 @@ async function loadDashboard() {
     
     let data = await loadData(); // 讀取所有資料
     
-    // --- 搜尋過濾 (既有的) ---
-    const searchInput = document.getElementById('searchInput'); // 假設你有給搜尋框 id
+    // --- 搜尋過濾 ---
+    const searchInput = document.getElementById('searchInput');
     if (searchInput && searchInput.value) {
         const keyword = searchInput.value.toLowerCase();
         data = data.filter(a => a.title.toLowerCase().includes(keyword));
     }
 
-    // --- 【新增】狀態過濾 ---
-    if (currentFilter !== 'all') {
+    // --- 狀態過濾 ---
+    if (typeof currentFilter !== 'undefined' && currentFilter !== 'all') {
         data = data.filter(anime => {
             const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
             
             if (currentFilter === 'watching') {
-                // 追番中：看過大於0 且 還沒看完
                 return watched > 0 && watched < anime.total;
             } else if (currentFilter === 'completed') {
-                // 已看完：看過等於總集數 (且總集數不為0)
                 return anime.total > 0 && watched >= anime.total;
             } else if (currentFilter === 'planned') {
-                // 尚未看：完全沒進度
                 return watched === 0;
             }
             return true;
@@ -460,12 +459,11 @@ async function loadDashboard() {
         return;
     }
 
-    // (以下保持原本的渲染卡片邏輯，不變)
     data.sort((a, b) => b.id - a.id);
+    
     data.forEach(anime => {
-        // ... (貼上你原本的卡片生成程式碼) ...
         const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
-        let progress = Math.round((watched / anime.total) * 100);
+        let progress = anime.total > 0 ? Math.round((watched / anime.total) * 100) : 0;
         if (progress > 100) progress = 100;
 
         const card = document.createElement('div');
@@ -474,6 +472,7 @@ async function loadDashboard() {
         card.style.flexDirection = 'column';
         card.style.height = '100%';
 
+        // ⚠️ 關鍵修正：在 openUpdateModal 和 openHistoryModal 的 ID 前後加上單引號 ('')
         card.innerHTML = `
             <img src="${anime.image}" class="anime-cover" onerror="this.src='https://placehold.co/600x400?text=Error'">
             <h3 style="margin:0 0 10px 0;">${anime.title}</h3>
@@ -485,8 +484,8 @@ async function loadDashboard() {
                 <div style="background:var(--success-color); width:${progress}%; height:100%; transition:width 0.5s ease; min-width:${progress > 0 ? '5px' : '0'};"></div>
             </div>
             <div style="display:flex; gap:10px;">
-                <button onclick="openUpdateModal(${anime.id}, ${watched}, ${anime.total})">更新進度</button>
-                <button class="outline" onclick="openHistoryModal(${anime.id})">紀錄</button>
+                <button onclick="openUpdateModal('${anime.id}', ${watched}, ${anime.total})">更新進度</button>
+                <button class="outline" onclick="openHistoryModal('${anime.id}')">紀錄</button>
             </div>
         `;
         list.appendChild(card);
