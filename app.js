@@ -227,23 +227,27 @@ async function selectAnimeFromAPI(index) {
         // 1. 準備資料
         const title = detailData.name_cn || detailData.name;
         
-        // 【集數修復】優先抓詳細資料，沒有則抓搜尋結果。如果還是 0，則視為 null (之後不填入)
-        let eps = detailData.eps || item.eps || 0;
+        // 【集數終極修復】
+        // 先強制轉成數字 (避免字串 "0" 造成誤判)
+        const detailEps = parseInt(detailData.eps, 10);
+        const searchEps = parseInt(item.eps, 10);
         
-        // 圖片處理
+        // 邏輯：如果詳細資料有有效集數(>0)就用它，否則回頭用搜尋結果的集數
+        const eps = (detailEps > 0) ? detailEps : (searchEps > 0 ? searchEps : 0);
+        
         let imgUrl = detailData.images ? (detailData.images.large || detailData.images.common) : '';
         if (imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
         
-        const airDate = detailData.air_date; // 格式通常為 '2023-10-01'
+        const airDate = detailData.air_date; // 格式: '2024-07-03'
 
         // 2. 填入可見欄位
         document.getElementById('title').value = title;
         
-        // 如果集數大於 0 才填入，否則清空（讓使用者自己填，不要填 0）
+        // 只有當 eps 真的大於 0 時才填入
         if (eps > 0) {
             document.getElementById('total').value = eps;
         } else {
-            document.getElementById('total').value = ''; 
+            document.getElementById('total').value = ''; // 留白讓使用者填
         }
         
         document.getElementById('imgUrl').value = imgUrl;
@@ -254,13 +258,11 @@ async function selectAnimeFromAPI(index) {
         document.getElementById('animeTags').value = JSON.stringify(tags); 
         document.getElementById('animeRating').value = JSON.stringify(detailData.rating || {});
 
-        // 4. 【連載狀態智慧判斷】
+        // 4. 【連載狀態智慧判斷 V2】
         const weekdaySelect = document.getElementById('weekday');
         
-        // 預設狀態：不固定/已完結 (-1)
-        let finalStatus = -1; 
-        let statusReason = "無法判斷日期";
-
+        let finalStatus = -1; // 預設: 已完結
+        
         if (airDate && airDate !== '0000-00-00') {
             const startDate = new Date(airDate);
             
@@ -268,72 +270,47 @@ async function selectAnimeFromAPI(index) {
                 const startDay = startDate.getDay(); // 0(週日) ~ 6(週六)
                 const today = new Date();
                 
-                // 邏輯 A: 如果有總集數
-                if (eps && eps > 0) {
-                    // 推算完結日：首播日 + (集數 * 7天) + 緩衝 28 天
-                    const estimatedDays = (eps * 7) + 28;
+                // 邏輯 A: 如果有總集數 -> 計算預計完結日
+                if (eps > 0) {
+                    const estimatedDays = (eps * 7) + 28; // 集數週數 + 4週緩衝
                     const estimatedEndDate = new Date(startDate);
                     estimatedEndDate.setDate(startDate.getDate() + estimatedDays);
                     
-                    if (today > estimatedEndDate) {
-                        finalStatus = -1; // 超過預計完結日 -> 已完結
-                        statusReason = "已過預計完結日";
-                    } else {
-                        finalStatus = startDay; // 還沒過 -> 連載中，設定為放送日
-                        statusReason = "放送期間內";
+                    if (today <= estimatedEndDate) {
+                        finalStatus = startDay; // 還沒過完結日 -> 連載中
                     }
                 } 
-                // 邏輯 B: 如果沒有總集數 (最容易出錯的地方)
+                // 邏輯 B: 如果沒有總集數 -> 看首播日期是否在半年內
                 else {
-                    // 計算距離首播過了多久
-                    const diffTime = Math.abs(today - startDate);
+                    const diffTime = today - startDate;
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
 
-                    // 如果首播日超過 180 天 (半年) 且沒有集數資料 -> 假設已完結
-                    // (大部分當季新番半年內會有集數資料，若無通常是舊番或電影)
-                    if (diffDays > 180) {
-                        finalStatus = -1;
-                        statusReason = "首播已久且無集數資料";
-                    } else {
-                        // 半年內的新番，暫定為連載中
+                    // 如果是未來動畫 (diffDays < 0) 或 半年內的新番 (diffDays < 180)
+                    if (diffDays < 180) {
                         finalStatus = startDay;
-                        statusReason = "近期首播 (半年內)";
                     }
-                }
-                
-                // 特殊修正：如果是未來還沒播出的
-                if (today < startDate) {
-                     finalStatus = startDay; // 設定為預定放送日
-                     statusReason = "尚未播出";
                 }
             }
         }
         
         weekdaySelect.value = finalStatus;
 
-        // 5. 提示視窗 (顯示除錯資訊讓您確認)
         closeModal('searchModal');
         
         const statusText = (finalStatus == -1) ? "已完結" : `連載中 (週${['日','一','二','三','四','五','六'][finalStatus]})`;
         const epText = (eps > 0) ? `全 ${eps} 集` : "集數未知";
         
-        // Console 顯示判斷依據 (F12)
-        console.log(`[狀態判斷] ${title}: ${statusReason} (Eps:${eps}, Date:${airDate}) => Status: ${finalStatus}`);
-
         alert(`✅ 自動填寫完成！\n\n📖 作品：${title}\n📺 規格：${epText}\n📡 狀態：${statusText}`);
 
     } catch (error) {
         console.error("抓取失敗:", error);
         closeModal('searchModal');
         alert("⚠️ 無法獲取詳細資料，已填入基本資訊。");
-        
-        // 基本補救
         document.getElementById('title').value = item.name_cn || item.name;
     } finally {
         document.body.style.cursor = originalText;
     }
 }
-
 // ==========================================
 // 原有功能：新增與管理
 // ==========================================
