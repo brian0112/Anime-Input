@@ -1012,102 +1012,234 @@ function importFromJSON(event) {
 }
 
 // ==========================================
-// 🔥 V11.0 新增：輪盤抽籤功能 🔥
+// 🔥 V11.0 雙輪盤系統 (Internal & External)
 // ==========================================
 
-let rouletteInterval = null;
-let isSpinning = false;
+// 全域變數，防止同時旋轉
+let isSpinningInternal = false;
+let isSpinningExternal = false;
+let currentExternalWinner = null; // 暫存右側抽到的動畫，方便加入片單
 
-async function startRoulette() {
-    if (isSpinning) return; // 防止重複點擊
+// ------------------------------------------
+// 1. 左側：片單輪盤 (Internal)
+// ------------------------------------------
+async function startInternalRoulette() {
+    if (isSpinningInternal) return;
     
-    const display = document.getElementById('roulette-display');
-    const resultArea = document.getElementById('result-area');
-    const btn = document.getElementById('spinBtn');
-    
-    // 1. 準備資料
+    const display = document.getElementById('display-internal');
+    const resultArea = document.getElementById('result-internal');
+    const btn = document.getElementById('btn-internal');
+    const includePlanned = document.getElementById('includePlanned').checked;
+
+    // A. 準備資料
     const data = await loadData();
-    // 篩選條件：還沒看完的動畫 (進度 < 總集數)
+    
+    // 篩選邏輯
     const candidates = data.filter(anime => {
         const watched = anime.history.length > 0 ? Math.max(...anime.history.map(h => h.end)) : 0;
-        return watched < anime.total;
+        const total = anime.total || 9999; // 防呆
+        
+        // 條件1: 必須是沒看完的 (watching)
+        const isWatching = watched < total && watched > 0;
+        
+        // 條件2: 如果勾選了"包含未觀看"，則連進度為0的也算
+        const isPlanned = watched === 0;
+
+        if (includePlanned) {
+            return isWatching || isPlanned;
+        } else {
+            return isWatching;
+        }
     });
 
     if (candidates.length === 0) {
-        return alert("恭喜你！所有動畫都看完了，沒得抽啦！快去新增幾部吧！");
+        return alert(includePlanned ? "你的片單全是空的，或者全部都看完了！" : "你目前沒有「觀看中」的動畫，試試勾選「包含未觀看」？");
     }
 
-    if (candidates.length === 1) {
-        return alert(`只剩下一部《${candidates[0].title}》，不用抽了，直接看吧！`);
-    }
-
-    // 2. 開始轉動
-    isSpinning = true;
+    // B. 開始轉動 UI 設定
+    isSpinningInternal = true;
     btn.disabled = true;
     btn.textContent = "抽選中...";
     resultArea.style.display = 'none';
     resultArea.style.opacity = '0';
-    
     display.classList.remove('winner');
     display.classList.add('spinning');
 
-    // 3. 動畫邏輯：快速切換文字
+    // C. 執行共用動畫邏輯
+    spinAnimation(candidates, display, (winner) => {
+        // 動畫結束回呼
+        display.textContent = winner.title;
+        display.classList.remove('spinning');
+        display.classList.add('winner');
+
+        // 顯示結果
+        const watched = winner.history.length > 0 ? Math.max(...winner.history.map(h => h.end)) : 0;
+        document.getElementById('img-internal').src = winner.image || 'https://placehold.co/200x300?text=No+Image';
+        document.getElementById('title-internal').textContent = winner.title;
+        document.getElementById('info-internal').textContent = `進度: ${watched} / ${winner.total || '?'} 集`;
+
+        showResult(resultArea);
+        
+        isSpinningInternal = false;
+        btn.disabled = false;
+        btn.textContent = "再抽一次";
+    });
+}
+
+// ------------------------------------------
+// 2. 右側：探索輪盤 (External)
+// ------------------------------------------
+async function startExternalRoulette() {
+    if (isSpinningExternal) return;
+
+    const display = document.getElementById('display-external');
+    const resultArea = document.getElementById('result-external');
+    const btn = document.getElementById('btn-external');
+
+    // A. 準備資料 (從 Bangumi API 抓取)
+    btn.disabled = true;
+    btn.textContent = "召喚資料中..."; // 提示使用者正在連網
+    display.textContent = "連線中...";
+
+    let candidates = [];
+    try {
+        // 策略：抓取 Bangumi 的 "每日放送" (calendar) 接口，這裡面都是當季新番/熱門作
+        // 為了增加隨機性，我們把週一到週日的都抓下來混合
+        const response = await fetch('https://api.bgm.tv/calendar');
+        const calendarData = await response.json();
+        
+        // 扁平化資料 (把每天的 list 合併成一個大陣列)
+        calendarData.forEach(day => {
+            if(day.items) candidates.push(...day.items);
+        });
+
+        // 如果資料太少，補一個備案 (例如搜尋 "2025")
+        if (candidates.length < 10) {
+             const fallbackRes = await fetch('https://api.bgm.tv/search/subject/2025?type=2&responseGroup=small&max_results=20');
+             const fallbackData = await fallbackRes.json();
+             if(fallbackData.list) candidates.push(...fallbackData.list);
+        }
+
+    } catch (error) {
+        console.error("Bangumi API Error:", error);
+        btn.disabled = false;
+        btn.textContent = "召喚失敗";
+        display.textContent = "API 錯誤";
+        return alert("連線 Bangumi 失敗，請稍後再試。");
+    }
+
+    if (candidates.length === 0) return alert("抓不到資料，真奇怪...");
+
+    // B. 開始轉動 UI 設定
+    isSpinningExternal = true;
+    btn.textContent = "抽選中...";
+    resultArea.style.display = 'none';
+    resultArea.style.opacity = '0';
+    display.classList.remove('winner');
+    display.classList.add('spinning');
+
+    // C. 執行共用動畫邏輯
+    // 注意：API 回傳的物件欄位可能不同 (name_cn vs name)
+    const formattedCandidates = candidates.map(c => ({
+        title: c.name_cn || c.name,
+        image: c.images ? (c.images.large || c.images.common || c.images.medium) : '',
+        originalData: c // 保留原始資料供"加入片單"使用
+    }));
+
+    spinAnimation(formattedCandidates, display, (winner) => {
+        // 動畫結束
+        currentExternalWinner = winner; // 存起來
+
+        display.textContent = winner.title;
+        display.classList.remove('spinning');
+        display.classList.add('winner');
+
+        let imgUrl = winner.image;
+        if(imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
+
+        document.getElementById('img-external').src = imgUrl || 'https://placehold.co/200x300?text=No+Image';
+        document.getElementById('title-external').textContent = winner.title;
+        document.getElementById('info-external').textContent = "來自 Bangumi 當季推薦";
+
+        showResult(resultArea);
+
+        isSpinningExternal = false;
+        btn.disabled = false;
+        btn.textContent = "再抽一次";
+    });
+}
+
+// ------------------------------------------
+// 3. 共用核心：轉動動畫邏輯 (Core Animation)
+// ------------------------------------------
+function spinAnimation(candidates, displayElement, callback) {
     let counter = 0;
-    let speed = 50; // 初始速度 (毫秒)
+    let speed = 50; // 初始速度
     
-    // 播放音效 (選用，目前先不加)
-    
-    // 建立一個遞迴的 timeout 來模擬減速效果
-    function spinLoop() {
-        // 隨機選一個顯示
-        const randomAnime = candidates[Math.floor(Math.random() * candidates.length)];
-        display.textContent = randomAnime.title;
+    function loop() {
+        // 隨機顯示一個標題
+        const randomItem = candidates[Math.floor(Math.random() * candidates.length)];
+        displayElement.textContent = randomItem.title;
         
         counter++;
-        
-        // 前 30 次快速轉動，之後開始減速
+
+        // 減速邏輯 (維持您原本的設定)
         if (counter > 30) speed += 20; 
         if (counter > 40) speed += 50;
 
         if (counter < 50) {
-            // 繼續轉
-            setTimeout(spinLoop, speed);
+            setTimeout(loop, speed);
         } else {
-            // 4. 停止 (中獎)
-            finishSpin(randomAnime);
+            // 結束，回傳最後停在的那一個
+            callback(randomItem);
         }
     }
-
-    spinLoop();
+    loop();
 }
 
-function finishSpin(winner) {
-    const display = document.getElementById('roulette-display');
-    const resultArea = document.getElementById('result-area');
-    const btn = document.getElementById('spinBtn');
-    
-    // 顯示中獎者
-    display.textContent = winner.title;
-    display.classList.remove('spinning');
-    display.classList.add('winner');
-    
-    // 顯示詳細資訊
-    const watched = winner.history.length > 0 ? Math.max(...winner.history.map(h => h.end)) : 0;
-    document.getElementById('result-title').textContent = winner.title;
-    document.getElementById('result-img').src = winner.image;
-    document.getElementById('result-progress').textContent = `目前進度: 第 ${watched} / ${winner.total} 集`;
-    
-    // 淡入顯示結果區
-    resultArea.style.display = 'block';
-    // 稍微延遲一點讓 display:block 生效後再加 opacity
+// 輔助：顯示結果區塊 (淡入)
+function showResult(element) {
+    element.style.display = 'block';
     setTimeout(() => {
-        resultArea.style.opacity = '1';
+        element.style.opacity = '1';
     }, 50);
+}
 
-    // 重置按鈕
-    isSpinning = false;
-    btn.disabled = false;
-    btn.textContent = "再抽一次";
+// ------------------------------------------
+// 4. 額外功能：將探索結果加入片單
+// ------------------------------------------
+async function addFromRoulette() {
+    if (!currentExternalWinner) return;
+    
+    const choice = confirm(`確定要將《${currentExternalWinner.title}》加入你的片單嗎？`);
+    if (!choice) return;
+
+    const data = await loadData();
+    const bgmData = currentExternalWinner.originalData;
+
+    // 檢查是否已存在
+    const exists = data.some(a => a.bangumiId == bgmData.id || a.title == currentExternalWinner.title);
+    if (exists) {
+        return alert("這部動畫已經在你的清單裡囉！");
+    }
+
+    // 建立新物件
+    const newAnime = {
+        id: Date.now().toString(),
+        title: currentExternalWinner.title,
+        bangumiId: bgmData.id,
+        // 嘗試抓取集數，如果 API 沒給就預設 0
+        total: bgmData.eps || 0,
+        image: currentExternalWinner.image ? currentExternalWinner.image.replace('http://', 'https://') : '',
+        history: [],
+        tags: [], // 暫時為空，之後可以靠補抓腳本
+        rating: bgmData.rating || {},
+        created: new Date().toISOString()
+    };
+
+    data.push(newAnime);
+    await saveData(data);
+    alert("🎉 成功加入片單！可以去「紀錄」頁面查看了。");
 }
 
 // ==========================================
