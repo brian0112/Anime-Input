@@ -215,7 +215,7 @@ async function selectAnimeFromAPI(index) {
     try {
         console.log(`正在獲取《${item.name_cn || item.name}》的詳細資料...`);
         
-        // 請求詳細資料 (包含 User-Agent)
+        // 請求詳細資料
         const headers = {
             'User-Agent': 'BrianAnimeInput/WebClient (https://github.com/brian0112/Anime-Input)',
             'Accept': 'application/json'
@@ -227,30 +227,34 @@ async function selectAnimeFromAPI(index) {
 
         // 1. 準備資料
         const title = detailData.name_cn || detailData.name;
-        const eps = detailData.eps || 0;
+        
+        // 【關鍵修復】集數判斷：優先看詳細資料，如果沒有(為0或undefined)，就回頭看搜尋列表的資料
+        const eps = detailData.eps || item.eps || 0;
+        
         let imgUrl = detailData.images ? (detailData.images.large || detailData.images.common) : '';
         if (imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
         const airDate = detailData.air_date;
 
         // 2. 填入可見欄位
         document.getElementById('title').value = title;
-        if (eps > 0) document.getElementById('total').value = eps;
+        // 確保集數欄位被填入
+        if (eps > 0) {
+            document.getElementById('total').value = eps;
+        } else {
+            document.getElementById('total').value = ''; // 如果真的都抓不到，留白讓使用者填
+        }
         document.getElementById('imgUrl').value = imgUrl;
 
-        // 3. 填入隱藏欄位
+        // 3. 填入隱藏欄位 (標籤依然會在背景默默抓取，供成就系統使用)
         document.getElementById('bangumiId').value = detailData.id;
         
         const tags = detailData.tags || [];
         document.getElementById('animeTags').value = JSON.stringify(tags); 
         document.getElementById('animeRating').value = JSON.stringify(detailData.rating || {});
 
-        // 4. Console 靜默驗證 (只在 F12 顯示，不彈出視窗)
+        // 4. Console 驗證 (除錯用)
         console.log("🔥 [驗證] ID:", detailData.id);
-        if (tags.length > 0) {
-            console.log("🔥 [驗證] 成功抓取標籤:", tags.map(t => t.name));
-        } else {
-            console.warn("⚠️ [驗證] API 回傳標籤為空");
-        }
+        if (tags.length > 0) console.log(`🔥 [驗證] 抓到 ${tags.length} 個標籤`);
 
         // 5. 判斷放送日
         const weekdaySelect = document.getElementById('weekday');
@@ -277,13 +281,27 @@ async function selectAnimeFromAPI(index) {
             weekdaySelect.value = -1;
         }
 
-        // 6. 關閉視窗 (原本這裡有 alert，現在直接移除)
         closeModal('searchModal');
+
+        // 6. 簡化後的提示視窗 (只顯示使用者關心的資訊)
+        const statusText = (weekdaySelect.value == -1) ? "已完結" : "連載中";
+        const epText = (eps > 0) ? `全 ${eps} 集` : "集數未知";
+        
+        alert(`✅ 自動填寫完成！\n\n📖 作品：${title}\n📺 規格：${epText}\n📡 狀態：${statusText}`);
 
     } catch (error) {
         console.error("抓取詳細資料失敗:", error);
-        // 如果失敗，至少關閉視窗讓使用者可以手動填
         closeModal('searchModal');
+        // 失敗時也給個溫馨提示
+        alert("⚠️ 無法獲取詳細資料，已填入基本資訊。");
+        
+        // 基本補救：如果 API 失敗，至少把搜尋列表有的填進去
+        document.getElementById('title').value = item.name_cn || item.name;
+        if(item.eps) document.getElementById('total').value = item.eps;
+        if(item.images) {
+            let backupImg = item.images.large || item.images.common;
+            if(backupImg) document.getElementById('imgUrl').value = backupImg.replace('http://', 'https://');
+        }
     } finally {
         document.body.style.cursor = originalText;
     }
