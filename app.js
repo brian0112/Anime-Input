@@ -215,7 +215,6 @@ async function selectAnimeFromAPI(index) {
     try {
         console.log(`正在獲取《${item.name_cn || item.name}》的詳細資料...`);
         
-        // 請求詳細資料
         const headers = {
             'User-Agent': 'BrianAnimeInput/WebClient (https://github.com/brian0112/Anime-Input)',
             'Accept': 'application/json'
@@ -228,80 +227,108 @@ async function selectAnimeFromAPI(index) {
         // 1. 準備資料
         const title = detailData.name_cn || detailData.name;
         
-        // 【關鍵修復】集數判斷：優先看詳細資料，如果沒有(為0或undefined)，就回頭看搜尋列表的資料
-        const eps = detailData.eps || item.eps || 0;
+        // 【集數修復】優先抓詳細資料，沒有則抓搜尋結果。如果還是 0，則視為 null (之後不填入)
+        let eps = detailData.eps || item.eps || 0;
         
+        // 圖片處理
         let imgUrl = detailData.images ? (detailData.images.large || detailData.images.common) : '';
         if (imgUrl) imgUrl = imgUrl.replace('http://', 'https://');
-        const airDate = detailData.air_date;
+        
+        const airDate = detailData.air_date; // 格式通常為 '2023-10-01'
 
         // 2. 填入可見欄位
         document.getElementById('title').value = title;
-        // 確保集數欄位被填入
+        
+        // 如果集數大於 0 才填入，否則清空（讓使用者自己填，不要填 0）
         if (eps > 0) {
             document.getElementById('total').value = eps;
         } else {
-            document.getElementById('total').value = ''; // 如果真的都抓不到，留白讓使用者填
+            document.getElementById('total').value = ''; 
         }
+        
         document.getElementById('imgUrl').value = imgUrl;
 
-        // 3. 填入隱藏欄位 (標籤依然會在背景默默抓取，供成就系統使用)
+        // 3. 填入隱藏欄位
         document.getElementById('bangumiId').value = detailData.id;
-        
         const tags = detailData.tags || [];
         document.getElementById('animeTags').value = JSON.stringify(tags); 
         document.getElementById('animeRating').value = JSON.stringify(detailData.rating || {});
 
-        // 4. Console 驗證 (除錯用)
-        console.log("🔥 [驗證] ID:", detailData.id);
-        if (tags.length > 0) console.log(`🔥 [驗證] 抓到 ${tags.length} 個標籤`);
-
-        // 5. 判斷放送日
+        // 4. 【連載狀態智慧判斷】
         const weekdaySelect = document.getElementById('weekday');
-        if (airDate) {
+        
+        // 預設狀態：不固定/已完結 (-1)
+        let finalStatus = -1; 
+        let statusReason = "無法判斷日期";
+
+        if (airDate && airDate !== '0000-00-00') {
             const startDate = new Date(airDate);
+            
             if (!isNaN(startDate.getTime())) {
-                const startDay = startDate.getDay();
-                let finalValue = -1; 
+                const startDay = startDate.getDay(); // 0(週日) ~ 6(週六)
+                const today = new Date();
+                
+                // 邏輯 A: 如果有總集數
                 if (eps && eps > 0) {
+                    // 推算完結日：首播日 + (集數 * 7天) + 緩衝 28 天
                     const estimatedDays = (eps * 7) + 28;
                     const estimatedEndDate = new Date(startDate);
                     estimatedEndDate.setDate(startDate.getDate() + estimatedDays);
-                    const today = new Date();
-                    if (today > estimatedEndDate) finalValue = -1;
-                    else finalValue = startDay;
-                } else {
-                    finalValue = startDay;
+                    
+                    if (today > estimatedEndDate) {
+                        finalStatus = -1; // 超過預計完結日 -> 已完結
+                        statusReason = "已過預計完結日";
+                    } else {
+                        finalStatus = startDay; // 還沒過 -> 連載中，設定為放送日
+                        statusReason = "放送期間內";
+                    }
+                } 
+                // 邏輯 B: 如果沒有總集數 (最容易出錯的地方)
+                else {
+                    // 計算距離首播過了多久
+                    const diffTime = Math.abs(today - startDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+                    // 如果首播日超過 180 天 (半年) 且沒有集數資料 -> 假設已完結
+                    // (大部分當季新番半年內會有集數資料，若無通常是舊番或電影)
+                    if (diffDays > 180) {
+                        finalStatus = -1;
+                        statusReason = "首播已久且無集數資料";
+                    } else {
+                        // 半年內的新番，暫定為連載中
+                        finalStatus = startDay;
+                        statusReason = "近期首播 (半年內)";
+                    }
                 }
-                weekdaySelect.value = finalValue;
-            } else {
-                weekdaySelect.value = -1;
+                
+                // 特殊修正：如果是未來還沒播出的
+                if (today < startDate) {
+                     finalStatus = startDay; // 設定為預定放送日
+                     statusReason = "尚未播出";
+                }
             }
-        } else {
-            weekdaySelect.value = -1;
         }
+        
+        weekdaySelect.value = finalStatus;
 
+        // 5. 提示視窗 (顯示除錯資訊讓您確認)
         closeModal('searchModal');
-
-        // 6. 簡化後的提示視窗 (只顯示使用者關心的資訊)
-        const statusText = (weekdaySelect.value == -1) ? "已完結" : "連載中";
+        
+        const statusText = (finalStatus == -1) ? "已完結" : `連載中 (週${['日','一','二','三','四','五','六'][finalStatus]})`;
         const epText = (eps > 0) ? `全 ${eps} 集` : "集數未知";
         
+        // Console 顯示判斷依據 (F12)
+        console.log(`[狀態判斷] ${title}: ${statusReason} (Eps:${eps}, Date:${airDate}) => Status: ${finalStatus}`);
+
         alert(`✅ 自動填寫完成！\n\n📖 作品：${title}\n📺 規格：${epText}\n📡 狀態：${statusText}`);
 
     } catch (error) {
-        console.error("抓取詳細資料失敗:", error);
+        console.error("抓取失敗:", error);
         closeModal('searchModal');
-        // 失敗時也給個溫馨提示
         alert("⚠️ 無法獲取詳細資料，已填入基本資訊。");
         
-        // 基本補救：如果 API 失敗，至少把搜尋列表有的填進去
+        // 基本補救
         document.getElementById('title').value = item.name_cn || item.name;
-        if(item.eps) document.getElementById('total').value = item.eps;
-        if(item.images) {
-            let backupImg = item.images.large || item.images.common;
-            if(backupImg) document.getElementById('imgUrl').value = backupImg.replace('http://', 'https://');
-        }
     } finally {
         document.body.style.cursor = originalText;
     }
