@@ -599,7 +599,7 @@ async function submitUpdate() {
     loadDashboard();
 }
 
-// 3. 歷史紀錄修復 (強制修復按鈕卷軸、優化排版)
+// 3. 歷史紀錄修復 (強制移除列表的橫向卷軸)
 async function openHistoryModal(id) {
     currentAnimeId = id; 
     const data = await loadData();
@@ -615,6 +615,11 @@ async function openHistoryModal(id) {
 
     const list = document.getElementById('historyList');
     list.innerHTML = '';
+    
+    // 【關鍵修正】強制列表容器不能橫向捲動
+    list.style.overflowX = 'hidden'; 
+    list.style.overflowY = 'auto'; // 保持垂直捲動
+    list.style.paddingRight = '5px'; // 預留一點空間給垂直捲軸
 
     if (!anime.history || anime.history.length === 0) {
         list.innerHTML = '<div style="text-align:center; color:gray; padding:20px;">尚無觀看紀錄</div>';
@@ -624,7 +629,7 @@ async function openHistoryModal(id) {
              .reverse()
              .forEach(record => {
             
-            // 處理日期顯示
+            // 處理日期
             let dateDisplay = record.date;
             if (!dateDisplay) {
                 dateDisplay = "日期未知";
@@ -634,17 +639,17 @@ async function openHistoryModal(id) {
                 } catch(e) { dateDisplay = record.date; }
             }
 
-            // 處理集數顯示
+            // 處理集數
             let epDisplay = `第 ${record.start} - ${record.end} 集`;
             if (record.start == record.end) {
                 epDisplay = `第 ${record.start} 集`;
             }
 
             const item = document.createElement('div');
-            // item 樣式：確保 flex 排版，gap 稍微拉大
-            item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid rgba(255,255,255,0.1); gap: 15px;";
+            // item 樣式
+            item.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:15px 0; border-bottom:1px solid rgba(255,255,255,0.1); gap: 15px; width: 100%; box-sizing: border-box;";
             
-            // 按鈕樣式：加入 overflow: hidden 和 display: inline-flex 以完美置中並隱藏卷軸
+            // 按鈕樣式 (維持之前的修正)
             const btnStyle = `
                 background: var(--danger-color, #ef4444);
                 color: white;
@@ -654,11 +659,11 @@ async function openHistoryModal(id) {
                 cursor: pointer;
                 font-size: 0.9rem;
                 width: auto;
-                min-width: 60px; /* 給予最小寬度 */
+                min-width: 60px;
                 flex-shrink: 0;
                 white-space: nowrap;
-                overflow: hidden; /* 【關鍵修正】強制隱藏卷軸 */
-                display: inline-flex; /* 確保內容置中 */
+                overflow: hidden;
+                display: inline-flex;
                 justify-content: center;
                 align-items: center;
             `;
